@@ -25,6 +25,8 @@
 #ifndef _MODE_LIST_H_
 #define _MODE_LIST_H_
 
+#include <stdlib.h>
+
 #include "mode.h"
 
 /* TODO:
