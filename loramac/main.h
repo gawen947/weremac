@@ -25,6 +25,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#define IF_VERBOSE(ctx, x) if((ctx)->verbose) x;
+
 /* The context is created by the command line parser and
    shared across all modules. Mainly it contains options
    selected by the command line. */

@@ -30,16 +30,39 @@
 #include <getopt.h>
 #include <err.h>
 
+#include "loramac-str.h"
 #include "loramac.h"
+#include "stdio-mode.h"
 #include "version.h"
+#include "common.h"
 #include "uart.h"
+#include "mode.h"
 #include "help.h"
+#include "main.h"
 
-static const char * basename(const char *s)
+static void display_mode(const struct iface_mode *mode, void *data)
 {
-  const char *base = (const char *)strrchr(s, '/');
-  base = base ? (base + 1) : s;
-  return base;
+  UNUSED(data);
+  printf("%s\t%s\n", mode->name, mode->description);
+}
+
+static void display_summary(const struct iface_mode *mode,
+                            const struct loramac_config *conf,
+                            uint16_t dst_mac,
+                            const char *dev,
+                            const char *speed)
+{
+  unsigned long flag;
+
+  printf(PACKAGE_VERSION "\n");
+  printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
+  printf(" iface (source) MAC address: %04X\n", conf->mac_address);
+  printf(" destination MAC address   : %04X\n", dst_mac);
+  printf(" flags                     : 0x%08lx\n", conf->flags);
+  for(flag = 0x1 ; flag <= LORAMAC_NOACK ; flag <<= 1) {
+    if(conf->flags & flag)
+      printf("  - %s\n", loramac_flag2str(flag));
+  }
 }
 
 static void print_help(const char *name)
@@ -47,6 +70,7 @@ static void print_help(const char *name)
   struct opt_help messages[] = {
     { 'h', "help",         "Show this help message" },
     { 'V', "version",      "Show version information" },
+    { 'v', "verbose",      "Enable verbose mode" },
 #ifdef COMMIT
     { 0, "commit",         "Display commit information" }
 #endif /* COMMIT */
@@ -54,8 +78,10 @@ static void print_help(const char *name)
     { 'i', "invalid",      "Do not filter invalid packets (packet header, CRC)" },
     { 'b', "no-broadcast", "Ignore broadcast messages" },
     { 'a', "no-ack",       "Do not answer nor expect ACKs" },
+    { 'm', "mode",         "Interface mode (use ? or list to display available modes)" },
     { 'B', "baud",         "Specify the baud rate (default 9600)"},
-    { 'd', "destination",  "Destination MAC (hex. short address, default to broadcast)" }
+    { 'd', "destination",  "Destination MAC (hex. short address, default to broadcast)" },
+    { 0, NULL, NULL }
   };
 
   help(name, "[OPTIONS] source device", messages);
@@ -64,6 +90,10 @@ static void print_help(const char *name)
 int main(int argc, char *argv[])
 {
   const char *prog_name;
+  const char *device;
+  const char *speed_str = strdup("9600");
+  const struct iface_mode *mode = &stdio_mode;
+  struct context ctx = { 0 };
   struct loramac_config loramac = {
     .uart_send       = uart_send,
 //    .start_ack_timer = start_ack_timer,
@@ -76,8 +106,9 @@ int main(int argc, char *argv[])
     .recv_frame      = loramac_recv_frame,
     .flags           = 0
   };
-  speed_t speed   = B9600;
-  int exit_status = EXIT_FAILURE;
+  speed_t speed    = B9600;
+  uint16_t dst_mac = 0xffff;
+  int exit_status  = EXIT_FAILURE;
 
   enum opt {
     OPT_COMMIT = 0x100
@@ -86,6 +117,7 @@ int main(int argc, char *argv[])
   struct option opts[] = {
     { "help", no_argument, NULL, 'h' },
     { "version", no_argument, NULL, 'V' },
+    { "verbose", no_argument, NULL, 'v' },
 #ifdef COMMIT
     { "commit", no_argument, NULL, OPT_COMMIT },
 #endif /* COMMIT */
@@ -96,6 +128,7 @@ int main(int argc, char *argv[])
     { "no-broadcast", no_argument, NULL, 'b' },
     { "no-ack", no_argument, NULL, 'a' },
 
+    { "mode", required_argument, NULL, 'm' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
     { NULL, 0, NULL, 0 }
@@ -104,11 +137,14 @@ int main(int argc, char *argv[])
   prog_name = basename(argv[0]);
 
   while(1) {
-    int c = getopt_long(argc, argv, "hVpibad:", opts, NULL);
+    int c = getopt_long(argc, argv, "hVvpibam:B:d:", opts, NULL);
 
-    if(c == 1)
+    if(c == -1)
       break;
     switch(c) {
+    case 'v':
+      ctx.verbose = 1;
+      break;
     case 'p':
       loramac.flags |= LORAMAC_PROMISCUOUS;
       break;
@@ -122,9 +158,27 @@ int main(int argc, char *argv[])
       loramac.flags |= LORAMAC_NOACK;
       break;
     case 'd':
-      loramac.mac_address = strtol(optarg, NULL, 16);
+      dst_mac = strtol(optarg, NULL, 16);
+      break;
+    case 'm':
+      if(!strcmp(optarg, "list") || !strcmp(optarg, "?")) {
+        walk_modes(display_mode, NULL);
+
+        exit_status = EXIT_SUCCESS;
+        goto EXIT;
+      }
+
+      mode = select_mode_by_name(optarg);
+      if(!mode) {
+        /* mode not found */
+        fprintf(stderr, "error: Iface mode \"%s\" not found.\n"
+                        "       Use list or ? to display available modes\n",
+                optarg);
+        goto EXIT;
+      }
       break;
     case 'B':
+      speed_str = strdup(optarg);
       speed = baud(optarg);
       break;
     case 'V':
@@ -148,14 +202,26 @@ int main(int argc, char *argv[])
   argc -= optind;
   argv += optind;
 
-  if(argc < 1) {
+  if(argc != 2) {
     print_help(prog_name);
     goto EXIT;
   }
 
+  loramac.mac_address = strtol(argv[0], NULL, 16);
+  device              = argv[1];
+
   exit_status = EXIT_SUCCESS;
 
+  /* display summary */
+  IF_VERBOSE(&ctx, display_summary(mode, &loramac, dst_mac, device, speed_str));
+
+  /* initialize serial */
+  serial_init(device, speed);
+  IF_VERBOSE(&ctx, printf("Serial initialized!\n"));
+
+  
 
 EXIT:
+  free((void *)speed_str);
   exit(exit_status);
 }

@@ -28,16 +28,16 @@
 #include <stdlib.h>
 
 #include "mode.h"
+#include "stdio-mode.h"
 
 /* TODO:
  - tun-mode
  - beacon-mode
  - ping-mode
 */
-//#include "read-mode.h"
 
 static const struct iface_mode * avail_modes[] = {
-  //&read_mode,
+  &stdio_mode,
   NULL
 };
 
