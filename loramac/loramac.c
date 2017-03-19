@@ -109,7 +109,7 @@ static int loramac_send_helper(uint16_t dst, const void *payload, unsigned int p
     return LORAMAC_SND_SUCCESS;
 
   wait_ack = 1;
-  mac_conf.start_ack_timer();
+  mac_conf.start_ack_timer(mac_conf.timeout);
   mac_conf.wait_ack_timer();
 
   if(last_ack_seqno != seqno)
@@ -123,7 +123,7 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
   int retransmission;
 
   mac_conf.lock();
-  for(retransmission = LORAMAC_MAX_RETRANS ; retransmission ; retransmission--) {
+  for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
     ret = loramac_send_helper(dst, payload, payload_size);
 
     if(ret == LORAMAC_SND_SUCCESS)

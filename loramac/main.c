@@ -35,6 +35,7 @@
 #include "stdio-mode.h"
 #include "version.h"
 #include "common.h"
+#include "xatoi.h"
 #include "uart.h"
 #include "mode.h"
 #include "help.h"
@@ -58,6 +59,8 @@ static void display_summary(const struct iface_mode *mode,
   printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
   printf(" iface (source) MAC address: %04X\n", conf->mac_address);
   printf(" destination MAC address   : %04X\n", dst_mac);
+  printf(" ACK timeout               : %d us\n", conf->timeout);
+  printf(" Max. retransmissions      : %d tries\n", conf->retrans);
   printf(" flags                     : 0x%08lx\n", conf->flags);
   for(flag = 0x1 ; flag <= LORAMAC_NOACK ; flag <<= 1) {
     if(conf->flags & flag)
@@ -68,19 +71,21 @@ static void display_summary(const struct iface_mode *mode,
 static void print_help(const char *name)
 {
   struct opt_help messages[] = {
-    { 'h', "help",         "Show this help message" },
-    { 'V', "version",      "Show version information" },
-    { 'v', "verbose",      "Enable verbose mode" },
+    { 'h', "help",          "Show this help message" },
+    { 'V', "version",       "Show version information" },
+    { 'v', "verbose",       "Enable verbose mode" },
 #ifdef COMMIT
-    { 0, "commit",         "Display commit information" }
+    { 0, "commit",          "Display commit information" }
 #endif /* COMMIT */
-    { 'p', "destination",  "Do not filter packets to another destination" },
-    { 'i', "invalid",      "Do not filter invalid packets (packet header, CRC)" },
-    { 'b', "no-broadcast", "Ignore broadcast messages" },
-    { 'a', "no-ack",       "Do not answer nor expect ACKs" },
-    { 'm', "mode",         "Interface mode (use ? or list to display available modes)" },
-    { 'B', "baud",         "Specify the baud rate (default 9600)"},
-    { 'd', "destination",  "Destination MAC (hex. short address, default to broadcast)" },
+    { 'p', "destination",     "Do not filter packets to another destination" },
+    { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
+    { 'b', "no-broadcast",    "Ignore broadcast messages" },
+    { 'a', "no-ack",          "Do not answer nor expect ACKs" },
+    { 't', "timeout",         "ACK timeout in microseconds (default 50ms)" },
+    { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
+    { 'm', "mode",            "Interface mode (use ? or list to display available modes)" },
+    { 'B', "baud",            "Specify the baud rate (default 9600)"},
+    { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
     { 0, NULL, NULL }
   };
 
@@ -104,11 +109,14 @@ int main(int argc, char *argv[])
     .htons           = htons,
     .ntohs           = ntohs,
     .recv_frame      = loramac_recv_frame,
+    .retrans         = 3,
+    .timeout         = 50000,
     .flags           = 0
   };
   speed_t speed    = B9600;
   uint16_t dst_mac = 0xffff;
   int exit_status  = EXIT_FAILURE;
+  int err;
 
   enum opt {
     OPT_COMMIT = 0x100
@@ -128,6 +136,8 @@ int main(int argc, char *argv[])
     { "no-broadcast", no_argument, NULL, 'b' },
     { "no-ack", no_argument, NULL, 'a' },
 
+    { "timeout", required_argument, NULL, 't' },
+    { "retransmissions", required_argument, NULL, 'r' },
     { "mode", required_argument, NULL, 'm' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
@@ -137,7 +147,7 @@ int main(int argc, char *argv[])
   prog_name = basename(argv[0]);
 
   while(1) {
-    int c = getopt_long(argc, argv, "hVvpibam:B:d:", opts, NULL);
+    int c = getopt_long(argc, argv, "hVvpibat:r:m:B:d:", opts, NULL);
 
     if(c == -1)
       break;
@@ -160,6 +170,15 @@ int main(int argc, char *argv[])
     case 'd':
       dst_mac = strtol(optarg, NULL, 16);
       break;
+    case 't':
+      /* FIXME: should understand a time suffix */
+      loramac.timeout = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse timeout value");
+    case 'r':
+      loramac.retrans = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse retransmissions value");
     case 'm':
       if(!strcmp(optarg, "list") || !strcmp(optarg, "?")) {
         walk_modes(display_mode, NULL);

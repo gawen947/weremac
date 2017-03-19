@@ -32,15 +32,12 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       1
+#define LORAMAC_MINOR       2
 
 #define LORAMAC_MAX_FRAME   0xff
 #define LORAMAC_HDR_SIZE    (sizeof(uint16_t) * 3 + sizeof(uint8_t)) /* src, dst, crc, seqno */
 #define LORAMAC_ACK_SIZE    (sizeof(uint16_t) + sizeof(uint8_t))     /* src, seqno */
 #define LORAMAC_MAX_PAYLOAD LORAMAC_MAX_FRAME - LORAMAC_HDR_SIZE
-
-#define LORAMAC_MAX_RETRANS 3   /* maximum number of retransmissions */
-#define LORAMAC_ACK_TIMEOUT 100 /* ACK timeout in ms */
 
 /*
    LoRaMAC data frame format:
@@ -93,7 +90,7 @@ struct loramac_config {
   /* The driver will use those two functions to start, stop and wait
      for the ACK timer. The stop function should also drop any wait in
      place on the timer. */
-  void (*start_ack_timer)(void);
+  void (*start_ack_timer)(unsigned int us);
   void (*stop_ack_timer)(void);
   void (*wait_ack_timer)(void);
 
@@ -118,8 +115,10 @@ struct loramac_config {
      outside of the interrupt context. */
   int (*recv_frame)(void);
 
-  uint16_t mac_address; /* device short MAC address */
-  unsigned long flags;  /* (see loramac_flags) */
+  uint16_t mac_address;  /* device short MAC address */
+  unsigned int  retrans; /* maximum number of retransmissions */
+  unsigned int  timeout; /* ACK timeout in us */
+  unsigned long flags;   /* (see loramac_flags) */
 };
 
 /* Initialize the LoRaMAC driver (see loramac_config) */
