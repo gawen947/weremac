@@ -36,6 +36,8 @@
 #include "version.h"
 #include "common.h"
 #include "xatoi.h"
+#include "timer.h"
+#include "lock.h"
 #include "uart.h"
 #include "mode.h"
 #include "help.h"
@@ -101,11 +103,11 @@ int main(int argc, char *argv[])
   struct context ctx = { 0 };
   struct loramac_config loramac = {
     .uart_send       = uart_send,
-//    .start_ack_timer = start_ack_timer,
-//    .stop_ack_timer  = stop_ack_timer,
-//    .wait_ack_timer  = wait_ack_timer,
-//    .lock            = lock,
-//    .unlock          = unlock,
+    .start_ack_timer = start_timer,
+    .stop_ack_timer  = stop_timer,
+    .wait_ack_timer  = wait_timer,
+    .lock            = lock,
+    .unlock          = unlock,
     .htons           = htons,
     .ntohs           = ntohs,
     .recv_frame      = loramac_recv_frame,
