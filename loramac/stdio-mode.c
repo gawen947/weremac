@@ -57,6 +57,7 @@ void input(const struct context *ctx)
 
   /* FIXME: read lines correctly, use iobuf? */
   while(1) {
+    printf("input> ");
     fgets(buf, sizeof(buf), stdin);
     loramac_send(ctx->dst_mac, buf, strlen(buf));
   }
