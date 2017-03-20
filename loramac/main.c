@@ -267,6 +267,9 @@ int main(int argc, char *argv[])
   /* display summary */
   IF_VERBOSE(&ctx, display_summary(mode, &loramac, ctx.dst_mac, device, speed_str));
 
+  /* initialize LoRaMAC */
+  loramac_init(&loramac);
+
   /* initialize serial */
   serial_init(device, speed);
   IF_VERBOSE(&ctx, printf("Serial initialized!\n"));

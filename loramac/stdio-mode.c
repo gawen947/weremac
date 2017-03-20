@@ -55,7 +55,8 @@ void input(const struct context *ctx)
 {
   char buf[BUF_SIZE];
 
-  /* FIXME: read lines correctly, use iobuf? */
+  /* FIXME: read lines correctly, use iobuf?
+     TODO: use special command 'quit' to stop the loop. */
   while(1) {
     printf("input> ");
     fgets(buf, sizeof(buf), stdin);
