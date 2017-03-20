@@ -25,6 +25,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include <stdint.h>
+
 #define IF_VERBOSE(ctx, x) if((ctx)->verbose) x;
 
 /* The context is created by the command line parser and
@@ -32,6 +34,7 @@
    selected by the command line. */
 struct context {
   int verbose;
+  uint16_t dst_mac;
 };
 
 #endif /* _MAIN_H_ */

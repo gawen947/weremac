@@ -23,6 +23,7 @@
  */
 
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -42,6 +43,32 @@
 #include "mode.h"
 #include "help.h"
 #include "main.h"
+
+struct thread_data {
+  const struct iface_mode *mode;
+  const struct context    *ctx;
+  struct loramac_config   *config;
+};
+
+static void * output_thread_func(void *p)
+{
+  struct thread_data *data = (struct thread_data *)p;
+
+  data->mode->input(data->ctx);
+
+  /* FIXME: should return correctly */
+  return NULL;
+}
+
+static void * input_thread_func(void *p)
+{
+  UNUSED(p);
+
+  uart_read_loop();
+
+  /* FIXME: should return correctly */
+  return NULL;
+}
 
 static void display_mode(const struct iface_mode *mode, void *data)
 {
@@ -96,11 +123,15 @@ static void print_help(const char *name)
 
 int main(int argc, char *argv[])
 {
+  pthread_t output_thread, input_thread;
   const char *prog_name;
   const char *device;
   const char *speed_str = strdup("9600");
   const struct iface_mode *mode = &stdio_mode;
-  struct context ctx = { 0 };
+  struct context ctx = {
+    .verbose = 0,
+    .dst_mac = 0xffff
+  };
   struct loramac_config loramac = {
     .uart_send       = uart_send,
     .start_ack_timer = start_timer,
@@ -115,8 +146,8 @@ int main(int argc, char *argv[])
     .timeout         = 50000,
     .flags           = 0
   };
+  struct thread_data data;
   speed_t speed    = B9600;
-  uint16_t dst_mac = 0xffff;
   int exit_status  = EXIT_FAILURE;
   int err;
 
@@ -170,7 +201,7 @@ int main(int argc, char *argv[])
       loramac.flags |= LORAMAC_NOACK;
       break;
     case 'd':
-      dst_mac = strtol(optarg, NULL, 16);
+      ctx.dst_mac = strtol(optarg, NULL, 16);
       break;
     case 't':
       /* FIXME: should understand a time suffix */
@@ -234,13 +265,28 @@ int main(int argc, char *argv[])
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
-  IF_VERBOSE(&ctx, display_summary(mode, &loramac, dst_mac, device, speed_str));
+  IF_VERBOSE(&ctx, display_summary(mode, &loramac, ctx.dst_mac, device, speed_str));
 
   /* initialize serial */
   serial_init(device, speed);
   IF_VERBOSE(&ctx, printf("Serial initialized!\n"));
 
-  
+  /* initialize mode */
+  mode->before(&ctx, &loramac);
+
+  data = (struct thread_data){
+    .mode   = mode,
+    .ctx    = &ctx,
+    .config = &loramac
+  };
+  err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
+  err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
+  if(err)
+    errx(EXIT_FAILURE, "cannot create threads");
+
+  /* FIXME: read return value */
+  pthread_join(output_thread, NULL);
+  pthread_join(input_thread, NULL);
 
 EXIT:
   free((void *)speed_str);

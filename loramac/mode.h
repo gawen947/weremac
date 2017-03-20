@@ -39,7 +39,8 @@ struct iface_mode {
 
   /* executed before/after module execution */
   void (*before)(const struct context *ctx,
-                 const struct loramac_config *loramac);
+                 struct loramac_config *loramac);
+  void (*input)(const struct context *ctx);
   void (*after)(const struct context *ctx);
 };
 

@@ -22,19 +22,49 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "loramac.h"
 #include "main.h"
+#include "dump.h"
+#include "common.h"
 #include "stdio-mode.h"
 
-void before(const struct context *ctx,
-            const struct loramac_config *loramac)
-{
+#define BUF_SIZE 0x80
 
+void cb_recv(uint16_t src, uint16_t dst,
+             const void *payload, unsigned int payload_size,
+             int status)
+{
+  /* FIXME: Use generic show in another unit. */
+  printf("%04X->%04X (status: %d):\n", src, dst, status);
+  hex_dump(payload, payload_size);
+  printf("-----------\n");
+}
+
+void before(const struct context  *ctx,
+            struct loramac_config *loramac)
+{
+  UNUSED(ctx);
+
+  loramac->cb_recv = cb_recv;
+}
+
+void input(const struct context *ctx)
+{
+  char buf[BUF_SIZE];
+
+  /* FIXME: read lines correctly, use iobuf? */
+  while(1) {
+    fgets(buf, sizeof(buf), stdin);
+    loramac_send(ctx->dst_mac, buf, strlen(buf));
+  }
 }
 
 void after(const struct context *ctx)
 {
-
+  UNUSED(ctx);
 }
 
 struct iface_mode stdio_mode = {
@@ -42,5 +72,6 @@ struct iface_mode stdio_mode = {
   .description = "Read output frame and print received frames on stdio.",
 
   .before = before,
+  .input  = input,
   .after  = after
 };
