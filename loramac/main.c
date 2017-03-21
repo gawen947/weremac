@@ -136,9 +136,9 @@ static void print_help(const char *name)
     { 'm', "mode",            "Interface mode (use ? or list to display available modes)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)"},
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
-    { 0,   "irq",             "IRQ GPIO" },
-    { 0,   "cts",             "CTS GPIO" },
-    { 0,   "reset",           "RESET GPIO" },
+    { 0,   "irq",             "IRQ RPi GPIO" },
+    { 0,   "cts",             "CTS RPi GPIO" },
+    { 0,   "reset",           "RESET RPi GPIO" },
     { 0, NULL, NULL }
   };
 
