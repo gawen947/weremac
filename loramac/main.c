@@ -53,6 +53,11 @@ struct thread_data {
 
 static void configure_gpio(const struct context *ctx)
 {
+  if((ctx->gpio_irq > 0) |
+     (ctx->gpio_cts > 0) |
+     (ctx->gpio_reset > 0))
+    rpi_gpio_init();
+
   if(ctx->gpio_irq > 0)
     rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
   if(ctx->gpio_cts > 0) /* FIXME: not sure about this one */

@@ -39,7 +39,7 @@
 #define GPIO_BASE         (BCM2708_PERI_BASE + 0x200000)
 #define BLOCK_SIZE        4096
 
-static volatile uint32_t *gpio_reg = MAP_FAILED;
+static volatile uint32_t *gpio_reg;
 
 void rpi_gpio_init(void)
 {
@@ -48,7 +48,7 @@ void rpi_gpio_init(void)
                   PROT_READ | PROT_WRITE,
                   MAP_SHARED,
                   fd, GPIO_BASE);
-  if(gpio_reg < 0)
+  if(gpio_reg == MAP_FAILED)
     err(EXIT_FAILURE, "cannot mmap GPIO");
   close(fd);
 }
