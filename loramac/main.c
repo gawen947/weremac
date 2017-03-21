@@ -241,10 +241,10 @@ int main(int argc, char *argv[])
         errx(EXIT_FAILURE, "invalid CTS GPIO number");
       break;
     case OPT_RESET:
-      ctx.gpio_cts = xatou(optarg, &err);
+      ctx.gpio_reset = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse RESET GPIO");
-      else if(!rpi_gpio_check(ctx.gpio_cts))
+      else if(!rpi_gpio_check(ctx.gpio_reset))
         errx(EXIT_FAILURE, "invalid RESET GPIO number");
       break;
     case 'v':
