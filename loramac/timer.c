@@ -22,9 +22,9 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef __Linux__
+#ifdef __linux__
 # define _POSIX_SOURCE 1
-#endif /* __Linux__ */
+#endif /* __linux__ */
 
 #include <string.h>
 #include <signal.h>
