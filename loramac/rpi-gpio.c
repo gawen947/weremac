@@ -84,6 +84,6 @@ int rpi_gpio_check(unsigned int gpio)
 {
   /* FIXME: not sure this is sufficient */
   if(gpio <= 27)
-    return 0;
-  return 1;
+    return 1;
+  return 0;
 }
