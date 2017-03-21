@@ -33,7 +33,7 @@
 #define PACKAGE "LoRaMAC"
 
 #define MAJOR 0
-#define MINOR 8
+#define MINOR 9
 
 #define VERSION         stringify(MAJOR) "." stringify(MINOR)
 #define LORAMAC_VERSION stringify(LORAMAC_MAJOR) "." stringify(LORAMAC_MINOR)
