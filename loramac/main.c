@@ -60,11 +60,15 @@ static void configure_gpio(const struct context *ctx)
 
   if(ctx->gpio_irq > 0)
     rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
-  if(ctx->gpio_cts > 0) /* FIXME: not sure about this one */
-    rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_IN);
-  if(ctx->gpio_reset > 0)
-    rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+  if(ctx->gpio_cts > 0) /* FIXME: not sure about this one */ {
+    rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_OUT);
+    rpi_gpio_set(ctx->gpio_cts);
+  }
+  if(ctx->gpio_reset > 0) {
     /* FIXME: or is it RPIO_GPIO_IN? see configuration.xml */
+    rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+    rpi_gpio_set(ctx->gpio_reset);
+  }
 }
 
 static void * output_thread_func(void *p)
