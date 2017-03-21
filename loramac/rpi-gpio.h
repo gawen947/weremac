@@ -22,24 +22,41 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MAIN_H_
-#define _MAIN_H_
+/* FIXME: This is Linux specific, isn't it?
+   We need a pragma to avoid compilation on
+   other OS. */
 
-#include <stdint.h>
-
-#define IF_VERBOSE(ctx, x) if((ctx)->verbose) x;
-
-/* The context is created by the command line parser and
-   shared across all modules. Mainly it contains options
-   selected by the command line. */
-struct context {
-  int verbose;
-  uint16_t dst_mac;
-
-  /* GPIO (negative means disabled) */
-  int gpio_irq;
-  int gpio_cts;
-  int gpio_reset;
+enum rpi_gpio_mode {
+  RPI_GPIO_OUT  = 0x0,
+  RPI_GPIO_IN   = 0x1,
+  RPI_GPIO_ALT0 = 0x4,
+  RPI_GPIO_ALT1 = 0x5,
+  RPI_GPIO_ALT2 = 0x6,
+  RPI_GPIO_ALT3 = 0x7,
+  RPI_GPIO_ALT4 = 0x3,
+  RPI_GPIO_ALT5 = 0x2
 };
 
-#endif /* _MAIN_H_ */
+/* Map GPIOs on the RPi */
+void rpi_gpio_init(void);
+
+/* Unmap GPIOs from the RPi */
+void rpi_gpio_destroy(void);
+
+/* Configure the mode for the GPIO (see rpi_gpio_mode).
+   Note that contrary to some example that you can find
+   on the Internet, you can directly configure the desired
+   mode here. There is no need to configure as input beforehand. */
+void rpi_gpio_set_mode(unsigned int gpio, unsigned int mode);
+
+/* Set a GPIO */
+void rpi_gpio_set(unsigned int gpio);
+
+/* Clear a GPIO */
+void rpi_gpio_clr(unsigned int gpio);
+
+/* Get the state of a GPIO */
+int rpi_gpio_get(unsigned int gpio);
+
+/* Check that the GPIO number is valid */
+int rpi_gpio_check(unsigned int gpio);

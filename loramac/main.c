@@ -34,6 +34,7 @@
 #include "loramac-str.h"
 #include "loramac.h"
 #include "stdio-mode.h"
+#include "rpi-gpio.h"
 #include "version.h"
 #include "common.h"
 #include "xatoi.h"
@@ -49,6 +50,16 @@ struct thread_data {
   const struct context    *ctx;
   struct loramac_config   *config;
 };
+
+static void configure_gpio(const struct context *ctx)
+{
+  if(ctx->gpio_irq > 0)
+    rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
+  if(ctx->gpio_cts > 0) /* FIXME: not sure about this one */
+    rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_IN);
+  if(ctx->gpio_reset > 0)
+    rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+}
 
 static void * output_thread_func(void *p)
 {
@@ -78,6 +89,7 @@ static void display_mode(const struct iface_mode *mode, void *data)
 
 static void display_summary(const struct iface_mode *mode,
                             const struct loramac_config *conf,
+                            const struct context *ctx,
                             uint16_t dst_mac,
                             const char *dev,
                             const char *speed)
@@ -86,6 +98,15 @@ static void display_summary(const struct iface_mode *mode,
 
   printf(PACKAGE_VERSION "\n");
   printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
+  if(ctx->gpio_irq > 0 | ctx->gpio_cts > 0 | ctx->gpio_reset > 0) {
+    printf("GPIO configured on:\n");
+    if(ctx->gpio_irq > 0)
+      printf("  - IRQ: %d\n", ctx->gpio_irq);
+    if(ctx->gpio_cts > 0)
+      printf("  - CTS: %d\n", ctx->gpio_cts);
+    if(ctx->gpio_reset > 0)
+      printf("  - RESET: %d\n", ctx->gpio_reset);
+  }
   printf(" iface (source) MAC address: %04X\n", conf->mac_address);
   printf(" destination MAC address   : %04X\n", dst_mac);
   printf(" ACK timeout               : %d us\n", conf->timeout);
@@ -115,6 +136,9 @@ static void print_help(const char *name)
     { 'm', "mode",            "Interface mode (use ? or list to display available modes)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)"},
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
+    { 0,   "irq",             "IRQ GPIO" },
+    { 0,   "cts",             "CTS GPIO" },
+    { 0,   "reset",           "RESET GPIO" },
     { 0, NULL, NULL }
   };
 
@@ -129,8 +153,11 @@ int main(int argc, char *argv[])
   const char *speed_str = strdup("9600");
   const struct iface_mode *mode = &stdio_mode;
   struct context ctx = {
-    .verbose = 0,
-    .dst_mac = 0xffff
+    .verbose    = 0,
+    .dst_mac    = 0xffff,
+    .gpio_irq   = -1,
+    .gpio_cts   = -1,
+    .gpio_reset = -1
   };
   struct loramac_config loramac = {
     .uart_send       = uart_send,
@@ -152,7 +179,10 @@ int main(int argc, char *argv[])
   int err;
 
   enum opt {
-    OPT_COMMIT = 0x100
+    OPT_COMMIT = 0x100,
+    OPT_IRQ,
+    OPT_CTS,
+    OPT_RESET
   };
 
   struct option opts[] = {
@@ -174,6 +204,11 @@ int main(int argc, char *argv[])
     { "mode", required_argument, NULL, 'm' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
+
+    /* GPIO configuration */
+    { "irq", required_argument, NULL, OPT_IRQ },
+    { "cts", required_argument, NULL, OPT_CTS },
+    { "reset", required_argument, NULL, OPT_RESET },
     { NULL, 0, NULL, 0 }
   };
 
@@ -185,6 +220,27 @@ int main(int argc, char *argv[])
     if(c == -1)
       break;
     switch(c) {
+    case OPT_IRQ:
+      ctx.gpio_irq = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse IRQ GPIO");
+      else if(!rpi_gpio_check(ctx.gpio_irq))
+        errx(EXIT_FAILURE, "invalid IRQ GPIO number");
+      break;
+    case OPT_CTS:
+      ctx.gpio_cts = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse CTS GPIO");
+      else if(!rpi_gpio_check(ctx.gpio_cts))
+        errx(EXIT_FAILURE, "invalid CTS GPIO number");
+      break;
+    case OPT_RESET:
+      ctx.gpio_cts = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse RESET GPIO");
+      else if(!rpi_gpio_check(ctx.gpio_cts))
+        errx(EXIT_FAILURE, "invalid RESET GPIO number");
+      break;
     case 'v':
       ctx.verbose = 1;
       break;
@@ -265,7 +321,7 @@ int main(int argc, char *argv[])
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
-  IF_VERBOSE(&ctx, display_summary(mode, &loramac, ctx.dst_mac, device, speed_str));
+  IF_VERBOSE(&ctx, display_summary(mode, &loramac, &ctx, ctx.dst_mac, device, speed_str));
 
   /* initialize LoRaMAC */
   loramac_init(&loramac);
@@ -273,6 +329,9 @@ int main(int argc, char *argv[])
   /* initialize serial */
   serial_init(device, speed);
   IF_VERBOSE(&ctx, printf("Serial initialized!\n"));
+
+  /* configure GPIO */
+  configure_gpio(&ctx);
 
   /* initialize mode */
   mode->before(&ctx, &loramac);

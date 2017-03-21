@@ -22,24 +22,68 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MAIN_H_
-#define _MAIN_H_
-
+#include <sys/mman.h>
+#include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
 
-#define IF_VERBOSE(ctx, x) if((ctx)->verbose) x;
+#include "safe-call.h"
 
-/* The context is created by the command line parser and
-   shared across all modules. Mainly it contains options
-   selected by the command line. */
-struct context {
-  int verbose;
-  uint16_t dst_mac;
+/* FIXME: This is Linux specific, isn't it?
+   We need a pragma to avoid compilation on
+   other OS. */
 
-  /* GPIO (negative means disabled) */
-  int gpio_irq;
-  int gpio_cts;
-  int gpio_reset;
-};
+#define BCM2708_PERI_BASE 0x20000000
+#define GPIO_BASE         (BCM2708_PERI_BASE + 0x200000)
+#define BLOCK_SIZE        4096
 
-#endif /* _MAIN_H_ */
+static volatile uint32_t *gpio_reg = MAP_FAILED;
+
+void rpi_gpio_init(void)
+{
+  int fd = xopen("/dev/mem", O_RDWR | O_SYNC, 0);
+  gpio_reg = mmap(0, BLOCK_SIZE,
+                  PROT_READ | PROT_WRITE,
+                  MAP_SHARED,
+                  fd, GPIO_BASE);
+  close(fd);
+}
+
+void rpi_gpio_destroy(void)
+{
+  munmap((void *)gpio_reg, BLOCK_SIZE);
+}
+
+void rpi_gpio_set_mode(unsigned int gpio, unsigned int mode)
+{
+  int reg, shift;
+
+  reg   = gpio / 10;
+  shift = (gpio % 10) * 3;
+
+  gpio_reg[reg] = (gpio_reg[reg] & ~(7 << shift)) | /* clear pin conf */
+                  (mode << shift);                  /* apply mode */
+}
+
+void rpi_gpio_set(unsigned int gpio)
+{
+  *(gpio_reg + 7)  = 1 << gpio;
+}
+
+void rpi_gpio_clr(unsigned int gpio)
+{
+  *(gpio_reg + 10) = 1 << gpio;
+}
+
+int rpi_gpio_get(unsigned int gpio)
+{
+  return *(gpio_reg + 13) & (1 << gpio);
+}
+
+int rpi_gpio_check(unsigned int gpio)
+{
+  /* FIXME: not sure this is sufficient */
+  if(gpio <= 27)
+    return 0;
+  return 1;
+}
