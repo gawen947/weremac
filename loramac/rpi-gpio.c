@@ -24,8 +24,10 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <err.h>
 
 #include "safe-call.h"
 
@@ -46,6 +48,8 @@ void rpi_gpio_init(void)
                   PROT_READ | PROT_WRITE,
                   MAP_SHARED,
                   fd, GPIO_BASE);
+  if(gpio_reg < 0)
+    err(EXIT_FAILURE, "cannot mmap GPIO");
   close(fd);
 }
 
