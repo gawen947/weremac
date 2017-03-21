@@ -119,7 +119,7 @@ static int loramac_send_helper(uint16_t dst, const void *payload, unsigned int p
 
 int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
 {
-  int ret;
+  int ret = LORAMAC_SND_NOACK;
   int retransmission;
 
   mac_conf.lock();
@@ -186,8 +186,8 @@ static int recv_data(unsigned int size)
   unsigned char *buf = rcv_pktbuf + size + 1;
   uint16_t expected_crc = CRC_CCITT_INIT;
   uint16_t frame_crc;
-  uint16_t dst_mac;
-  uint16_t src_mac;
+  uint16_t dst_mac = 0x0000; /* invalid address */
+  uint16_t src_mac = 0x0000; /* invalid address */
   uint8_t  seqno;
   int status = LORAMAC_RCV_SUCCESS;
 

@@ -22,6 +22,10 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef __Linux__
+# define _POSIX_SOURCE 1
+#endif /* __Linux__ */
+
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>

@@ -98,7 +98,7 @@ static void display_summary(const struct iface_mode *mode,
 
   printf(PACKAGE_VERSION "\n");
   printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
-  if(ctx->gpio_irq > 0 | ctx->gpio_cts > 0 | ctx->gpio_reset > 0) {
+  if((ctx->gpio_irq > 0) | (ctx->gpio_cts > 0) | (ctx->gpio_reset > 0)) {
     printf("GPIO configured on:\n");
     if(ctx->gpio_irq > 0)
       printf("  - IRQ: %d\n", ctx->gpio_irq);
