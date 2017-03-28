@@ -28,6 +28,7 @@
 #include "loramac.h"
 #include "main.h"
 #include "dump.h"
+#include "iobuf.h"
 #include "common.h"
 #include "stdio-mode.h"
 
@@ -54,18 +55,21 @@ void before(const struct context  *ctx,
 void input(const struct context *ctx)
 {
   char buf[BUF_SIZE];
+  iofile_t file = iobuf_dopen(STDIN_FILENO);
 
   /* FIXME: read lines correctly, use iobuf?
      TODO: use special command 'quit' to stop the loop. */
   while(1) {
     printf("input> ");
-    fgets(buf, sizeof(buf), stdin);
+    iobuf_gets(file, buf, sizeof(buf));
 
     if(!strcmp(buf, "quit"))
       return;
 
     loramac_send(ctx->dst_mac, buf, strlen(buf));
   }
+
+  iobuf_close(file);
 }
 
 void after(const struct context *ctx)
