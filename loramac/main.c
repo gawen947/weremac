@@ -60,12 +60,11 @@ static void configure_gpio(const struct context *ctx)
 
   if(ctx->gpio_irq > 0)
     rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
-  if(ctx->gpio_cts > 0) /* FIXME: not sure about this one */ {
+  if(ctx->gpio_cts > 0) {
     rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_OUT);
-    rpi_gpio_set(ctx->gpio_cts);
+    rpi_gpio_set(ctx->gpio_cts); /* set or clear ? */
   }
   if(ctx->gpio_reset > 0) {
-    /* FIXME: or is it RPIO_GPIO_IN? see configuration.xml */
     rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
     rpi_gpio_set(ctx->gpio_reset);
   }
@@ -333,9 +332,6 @@ int main(int argc, char *argv[])
   /* display summary */
   IF_VERBOSE(&ctx, display_summary(mode, &loramac, &ctx, ctx.dst_mac, device, speed_str));
 
-  /* initialize LoRaMAC */
-  loramac_init(&loramac);
-
   /* initialize serial */
   serial_init(device, speed);
   IF_VERBOSE(&ctx, printf("Serial initialized!\n"));
@@ -345,6 +341,9 @@ int main(int argc, char *argv[])
 
   /* initialize mode */
   mode->before(&ctx, &loramac);
+
+  /* initialize LoRaMAC */
+  loramac_init(&loramac);
 
   data = (struct thread_data){
     .mode   = mode,
