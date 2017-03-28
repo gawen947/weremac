@@ -22,25 +22,29 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MODE_LIST_H_
-#define _MODE_LIST_H_
+#include <stdint.h>
 
-#include <stdlib.h>
-
-#include "mode.h"
-#include "stdio-mode.h"
+#include "common.h"
+#include "main.h"
 #include "ping-mode.h"
 
-/* TODO:
- - tun-mode
- - beacon-mode
- - ping-mode
-*/
+void cb_recv(uint16_t src, uint16_t dst,
+             const void *payload, unsigned int payload_size,
+             int status)
+{
 
-static const struct iface_mode * avail_modes[] = {
-  &stdio_mode,
-  &ping_mode,
-  NULL
+}
+
+void after(const struct context *ctx)
+{
+  UNUSED(ctx);
+}
+
+struct iface_mode ping_mode = {
+  .name = "ping",
+  .description = "Send echo-requests and answer with echo-replies",
+
+  .before = before,
+  .input  = input,
+  .after  = after
 };
-
-#endif /* _MODE_LIST_H_ */

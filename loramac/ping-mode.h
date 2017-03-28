@@ -22,25 +22,11 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MODE_LIST_H_
-#define _MODE_LIST_H_
-
-#include <stdlib.h>
+#ifndef _PING_MODE_H_
+#define _PING_MODE_H_
 
 #include "mode.h"
-#include "stdio-mode.h"
-#include "ping-mode.h"
 
-/* TODO:
- - tun-mode
- - beacon-mode
- - ping-mode
-*/
+struct iface_mode ping_mode;
 
-static const struct iface_mode * avail_modes[] = {
-  &stdio_mode,
-  &ping_mode,
-  NULL
-};
-
-#endif /* _MODE_LIST_H_ */
+#endif /* _PING_MODE_H_ */

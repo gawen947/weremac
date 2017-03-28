@@ -42,7 +42,6 @@ void cb_recv(uint16_t src, uint16_t dst,
   /* FIXME: Use generic show in another unit. */
   printf("%04X->%04X (status: %d):\n", src, dst, status);
   hex_dump(payload, payload_size);
-  printf("-----------\n");
 }
 
 void before(const struct context  *ctx,
@@ -78,7 +77,7 @@ void after(const struct context *ctx)
 
 struct iface_mode stdio_mode = {
   .name = "stdio",
-  .description = "Read output frame and print received frames on stdio.",
+  .description = "Read output frame and print received frames on stdio",
 
   .before = before,
   .input  = input,
