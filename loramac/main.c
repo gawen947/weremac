@@ -273,10 +273,12 @@ int main(int argc, char *argv[])
       loramac.timeout = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
+      break;
     case 'r':
       loramac.retrans = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
+      break;
     case 'm':
       if(!strcmp(optarg, "list") || !strcmp(optarg, "?")) {
         walk_modes(display_mode, NULL);
