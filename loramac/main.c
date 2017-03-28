@@ -24,6 +24,7 @@
 
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -50,6 +51,11 @@ struct thread_data {
   const struct context    *ctx;
   struct loramac_config   *config;
 };
+
+static void uint_usleep(unsigned int us)
+{
+  usleep(us);
+}
 
 static void configure_gpio(const struct context *ctx)
 {
@@ -119,6 +125,7 @@ static void display_summary(const struct iface_mode *mode,
   printf(" iface (source) MAC address: %04X\n", conf->mac_address);
   printf(" destination MAC address   : %04X\n", dst_mac);
   printf(" ACK timeout               : %d us\n", conf->timeout);
+  printf(" SIFS                      : %d us\n", conf->sifs);
   printf(" Max. retransmissions      : %d tries\n", conf->retrans);
   printf(" flags                     : 0x%08lx\n", conf->flags);
   for(flag = 0x1 ; flag <= LORAMAC_NOACK ; flag <<= 1) {
@@ -140,7 +147,8 @@ static void print_help(const char *name)
     { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
     { 'b', "no-broadcast",    "Ignore broadcast messages" },
     { 'a', "no-ack",          "Do not answer nor expect ACKs" },
-    { 't', "timeout",         "ACK timeout in microseconds (default 50ms)" },
+    { 't', "timeout",         "ACK timeout in microseconds (default 2 seconds)" },
+    { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 500 ms)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
     { 'm', "mode",            "Interface mode (use ? or list to display available modes)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)"},
@@ -177,9 +185,11 @@ int main(int argc, char *argv[])
     .unlock          = unlock,
     .htons           = htons,
     .ntohs           = ntohs,
+    .usleep          = uint_usleep,
     .recv_frame      = loramac_recv_frame,
     .retrans         = 3,
-    .timeout         = 50000,
+    .timeout         = 2000000,  /* 2 s */
+    .sifs            = 500000,   /* 500 ms */
     .flags           = 0
   };
   struct thread_data data;
@@ -209,6 +219,7 @@ int main(int argc, char *argv[])
     { "no-ack", no_argument, NULL, 'a' },
 
     { "timeout", required_argument, NULL, 't' },
+    { "sifs", required_argument, NULL, 's' },
     { "retransmissions", required_argument, NULL, 'r' },
     { "mode", required_argument, NULL, 'm' },
     { "baud", required_argument, NULL, 'B' },
@@ -273,6 +284,11 @@ int main(int argc, char *argv[])
       loramac.timeout = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
+      break;
+    case 's':
+      loramac.sifs = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse SIFS value");
       break;
     case 'r':
       loramac.retrans = xatou(optarg, &err);

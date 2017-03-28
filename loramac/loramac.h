@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       2
+#define LORAMAC_MINOR       3
 
 #define LORAMAC_MAX_FRAME   0xff
 #define LORAMAC_HDR_SIZE    (sizeof(uint16_t) * 3 + sizeof(uint8_t)) /* src, dst, crc, seqno */
@@ -94,6 +94,9 @@ struct loramac_config {
   void (*stop_ack_timer)(void);
   void (*wait_ack_timer)(void);
 
+  /* Sleep function used for SIFS. */
+  void (*usleep)(unsigned int us);
+
   /* We only send one packet at a time. We are forced to do
      this unless we can start multiple referenced timers
      within the same period. So until then we lock/unlock
@@ -118,6 +121,7 @@ struct loramac_config {
   uint16_t mac_address;  /* device short MAC address */
   unsigned int  retrans; /* maximum number of retransmissions */
   unsigned int  timeout; /* ACK timeout in us */
+  unsigned int  sifs;    /* Short Inter Frame Spacing time in us */
   unsigned long flags;   /* (see loramac_flags) */
 };
 

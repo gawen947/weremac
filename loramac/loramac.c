@@ -233,8 +233,10 @@ PARSING_COMPLETED:
 
   /* send ACK when enabled */
   if(!(mac_conf.flags & LORAMAC_NOACK) && \
-     status == LORAMAC_RCV_SUCCESS)
+     status == LORAMAC_RCV_SUCCESS) {
+    mac_conf.usleep(mac_conf.sifs);
     send_ack(src_mac, seqno);
+  }
 
   /* send frame to upper layer */
   mac_conf.cb_recv(src_mac, dst_mac,
