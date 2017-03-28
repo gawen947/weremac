@@ -28,14 +28,26 @@
 #include "main.h"
 #include "ping-mode.h"
 
-void cb_recv(uint16_t src, uint16_t dst,
+static void cb_recv(uint16_t src, uint16_t dst,
              const void *payload, unsigned int payload_size,
              int status)
 {
 
 }
 
-void after(const struct context *ctx)
+static void before(const struct context  *ctx,
+            struct loramac_config *loramac)
+{
+  UNUSED(ctx);
+  loramac->cb_recv = cb_recv;
+}
+
+static void input(const struct context *ctx)
+{
+  UNUSED(ctx);
+}
+
+static void after(const struct context *ctx)
 {
   UNUSED(ctx);
 }

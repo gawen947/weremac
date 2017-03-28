@@ -35,24 +35,23 @@
 
 #define BUF_SIZE 0x80
 
-void cb_recv(uint16_t src, uint16_t dst,
-             const void *payload, unsigned int payload_size,
-             int status)
+static void cb_recv(uint16_t src, uint16_t dst,
+                    const void *payload, unsigned int payload_size,
+                    int status)
 {
   /* FIXME: Use generic show in another unit. */
   printf("%04X->%04X (status: %d):\n", src, dst, status);
   hex_dump(payload, payload_size);
 }
 
-void before(const struct context  *ctx,
-            struct loramac_config *loramac)
+static void before(const struct context  *ctx,
+                   struct loramac_config *loramac)
 {
   UNUSED(ctx);
-
   loramac->cb_recv = cb_recv;
 }
 
-void input(const struct context *ctx)
+static void input(const struct context *ctx)
 {
   char buf[BUF_SIZE];
   iofile_t file = iobuf_dopen(STDIN_FILENO);
@@ -70,7 +69,7 @@ void input(const struct context *ctx)
   iobuf_close(file);
 }
 
-void after(const struct context *ctx)
+static void after(const struct context *ctx)
 {
   UNUSED(ctx);
 }
