@@ -57,8 +57,6 @@ void input(const struct context *ctx)
   char buf[BUF_SIZE];
   iofile_t file = iobuf_dopen(STDIN_FILENO);
 
-  /* FIXME: read lines correctly, use iobuf?
-     TODO: use special command 'quit' to stop the loop. */
   while(1) {
     printf("input> ");
     iobuf_gets(file, buf, sizeof(buf));
