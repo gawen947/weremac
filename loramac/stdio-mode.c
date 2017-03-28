@@ -60,6 +60,10 @@ void input(const struct context *ctx)
   while(1) {
     printf("input> ");
     fgets(buf, sizeof(buf), stdin);
+
+    if(!strcmp(buf, "quit"))
+      return;
+
     loramac_send(ctx->dst_mac, buf, strlen(buf));
   }
 }
