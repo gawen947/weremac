@@ -60,6 +60,8 @@ static void input(const struct context *ctx)
 
     if(!strcmp(buf, "quit"))
       return;
+    else if(!strcmp(buf, "exit"))
+      return;
 
     loramac_send(ctx->dst_mac, buf, strlen(buf));
   }
