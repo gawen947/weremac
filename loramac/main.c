@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
   prog_name = basename(argv[0]);
 
   while(1) {
-    int c = getopt_long(argc, argv, "hVvpibat:r:m:B:d:", opts, NULL);
+    int c = getopt_long(argc, argv, "hVvpibat:s:r:m:B:d:", opts, NULL);
 
     if(c == -1)
       break;
