@@ -36,8 +36,10 @@
 
 static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
-                    int status)
+                    int status, void *data)
 {
+  UNUSED(data);
+
   /* FIXME: Use generic show in another unit. */
   printf("%04X->%04X (status: %d):\n", src, dst, status);
   hex_dump(payload, payload_size);

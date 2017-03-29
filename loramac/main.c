@@ -35,6 +35,7 @@
 #include "loramac-str.h"
 #include "loramac.h"
 #include "stdio-mode.h"
+#include "ping-mode.h"
 #include "rpi-gpio.h"
 #include "version.h"
 #include "common.h"
@@ -156,6 +157,14 @@ static void print_help(const char *name)
     { 0,   "irq",             "IRQ RPi GPIO" },
     { 0,   "cts",             "CTS RPi GPIO" },
     { 0,   "reset",           "RESET RPi GPIO" },
+
+    /* mode specific options */
+    /* FIXME: we need separate commands! */
+    /* ping mode */
+    { 0,   "size",     "Number of data bytes to be sent" },
+    { 0,   "count",    "Stop after sending count messages" },
+    { 0,   "flood",    "Use a period/backspace display for the messages sent/received" },
+    { 0,   "interval", "Wait interval milliseconds between each message" },
     { 0, NULL, NULL }
   };
 
@@ -174,7 +183,11 @@ int main(int argc, char *argv[])
     .dst_mac    = 0xffff,
     .gpio_irq   = -1,
     .gpio_cts   = -1,
-    .gpio_reset = -1
+    .gpio_reset = -1,
+    .size       = 4,
+    .count      = 0,
+    .interval   = 200,
+    .flood      = 0
   };
   struct loramac_config loramac = {
     .uart_send       = uart_send,
@@ -190,7 +203,8 @@ int main(int argc, char *argv[])
     .retrans         = 3,
     .timeout         = 2000000,  /* 2 s */
     .sifs            = 500000,   /* 500 ms */
-    .flags           = 0
+    .flags           = 0,
+    .data            = &ctx
   };
   struct thread_data data;
   speed_t speed    = B9600;
@@ -201,7 +215,11 @@ int main(int argc, char *argv[])
     OPT_COMMIT = 0x100,
     OPT_IRQ,
     OPT_CTS,
-    OPT_RESET
+    OPT_RESET,
+    OPT_SIZE,
+    OPT_COUNT,
+    OPT_FLOOD,
+    OPT_INTERVAL
   };
 
   struct option opts[] = {
@@ -229,6 +247,13 @@ int main(int argc, char *argv[])
     { "irq", required_argument, NULL, OPT_IRQ },
     { "cts", required_argument, NULL, OPT_CTS },
     { "reset", required_argument, NULL, OPT_RESET },
+
+    /* mode specific options */
+    /* ping mode */
+    { "size", required_argument, NULL, OPT_SIZE },
+    { "count", required_argument, NULL, OPT_COUNT },
+    { "flood", required_argument, NULL, OPT_FLOOD },
+    { "interval", required_argument, NULL, OPT_INTERVAL },
     { NULL, 0, NULL, 0 }
   };
 
@@ -295,6 +320,22 @@ int main(int argc, char *argv[])
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
       break;
+    case OPT_SIZE:
+      ctx.size = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse packet size");
+      if(ctx.size > (LORAMAC_MAX_PAYLOAD - PING_HDR_SIZE))
+        errx(EXIT_FAILURE, "packet size too long");
+      break;
+    case OPT_COUNT:
+      ctx.count = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse count");
+      break;
+    case OPT_INTERVAL:
+      ctx.interval = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse interval");
     case 'm':
       if(!strcmp(optarg, "list") || !strcmp(optarg, "?")) {
         walk_modes(display_mode, NULL);
