@@ -23,14 +23,23 @@
  */
 
 #include <stdint.h>
+#include <unistd.h>
+#include <assert.h>
+#include <err.h>
 
 #include "common.h"
 #include "main.h"
+#include "string-utils.h"
 #include "ping-mode.h"
 
+enum ping_msg_type {
+  PING_ECHO_REQUEST,
+  PING_ECHO_REPLY
+};
+
 static void cb_recv(uint16_t src, uint16_t dst,
-             const void *payload, unsigned int payload_size,
-             int status)
+                    const void *payload, unsigned int payload_size,
+                    int status, void *data)
 {
 
 }
@@ -44,7 +53,42 @@ static void before(const struct context  *ctx,
 
 static void input(const struct context *ctx)
 {
-  UNUSED(ctx);
+  /* send ping messages */
+  seqno_t seqno = 0;
+  unsigned int  count = ctx->count;
+  unsigned char sbuf[LORAMAC_MAX_PAYLOAD];
+  unsigned char *buf = sbuf;
+
+  assert(ctx->size + PING_HDR_SIZE < LORAMAC_MAX_PAYLOAD);
+
+  /* We fill the message with random bytes */
+  fill_with_random(sbuf + PING_HDR_SIZE, ctx->size);
+
+  while(1) {
+    struct timeval tv;
+
+    usleep(ctx->interval);
+
+    /* Create the ping template */
+    gettimeofday(&tv, NULL);
+
+    /* ping header */
+    *((uint8_t *)buf) = PING_ECHO_REQUEST; buf += sizeof(uint8_t);
+    *((seqno_t *)buf) = seqno; buf += sizeof(seqno_t);
+    *((struct timeval *)buf) = tv;
+
+    /* stdout if needed */
+    if(ctx->flood)
+      write_slit(STDOUT_FILENO, ".");
+
+    seqno++;
+
+    if(count != 0) {
+      count--;
+      if(ctx->count == 0)
+        break;
+    }
+  }
 }
 
 static void after(const struct context *ctx)

@@ -25,7 +25,16 @@
 #ifndef _PING_MODE_H_
 #define _PING_MODE_H_
 
+#include <sys/time.h>
+
 #include "mode.h"
+
+/* The sequence number size may change.
+   The timevalue on the other hand will
+   always be defined by its structure */
+typedef unsigned short seqno_t;
+
+#define PING_HDR_SIZE sizeof(uint8_t) + sizeof(seqno_t) + sizeof(struct timeval) /* type, seqno, timeval */
 
 struct iface_mode ping_mode;
 
