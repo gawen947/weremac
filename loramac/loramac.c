@@ -242,7 +242,7 @@ PARSING_COMPLETED:
   mac_conf.cb_recv(src_mac, dst_mac,
                    rcv_pktbuf + sizeof(uint16_t) * 2 + sizeof(uint8_t) + 1,
                    size - LORAMAC_HDR_SIZE,
-                   status);
+                   status, mac_conf.data);
   return status;
 }
 

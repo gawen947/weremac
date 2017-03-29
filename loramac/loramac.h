@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       3
+#define LORAMAC_MINOR       4
 
 #define LORAMAC_MAX_FRAME   0xff
 #define LORAMAC_HDR_SIZE    (sizeof(uint16_t) * 3 + sizeof(uint8_t)) /* src, dst, crc, seqno */
@@ -82,10 +82,12 @@ struct loramac_config {
   /* The driver will call cb_recv() when a frame has been
      received (frames may be filtered according to the
      loramac_flags). The status argument of this function reflect
-     the parsing status (see loramac_receive_status). */
+     the parsing status (see loramac_receive_status). It is also
+     possible to pass a context pointer to this callback. This 
+     should be initialized in loramac_config. */
   void (*cb_recv)(uint16_t src, uint16_t dst,
                   const void *payload, unsigned int payload_size,
-                  int status);
+                  int status, void *data);
 
   /* The driver will use those two functions to start, stop and wait
      for the ACK timer. The stop function should also drop any wait in
@@ -123,6 +125,8 @@ struct loramac_config {
   unsigned int  timeout; /* ACK timeout in us */
   unsigned int  sifs;    /* Short Inter Frame Spacing time in us */
   unsigned long flags;   /* (see loramac_flags) */
+
+  void *data; /* context data passed to user callbacks */
 };
 
 /* Initialize the LoRaMAC driver (see loramac_config) */
