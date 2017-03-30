@@ -69,11 +69,17 @@ static void configure_gpio(const struct context *ctx)
     rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
   if(ctx->gpio_cts > 0) {
     rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_OUT);
-    rpi_gpio_set(ctx->gpio_cts); /* set or clear ? */
+    rpi_gpio_set(ctx->gpio_cts);
   }
   if(ctx->gpio_reset > 0) {
     rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+
+    /* reset pulse */
     rpi_gpio_set(ctx->gpio_reset);
+    usleep(10000);                   /* up 10ms */
+    rpi_gpio_clr(ctx->gpio_reset);
+    usleep(30000);                   /* down 30ms */
+    rpi_gpio_set(ctx->gpio_reset);   /* up */
   }
 }
 
