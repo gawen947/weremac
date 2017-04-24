@@ -32,12 +32,12 @@
 #include <getopt.h>
 #include <err.h>
 
+#include "string-utils.h"
 #include "loramac-str.h"
 #include "loramac.h"
-#include "stdio-mode.h"
-#include "ping-mode.h"
 #include "rpi-gpio.h"
 #include "version.h"
+#include "options.h"
 #include "common.h"
 #include "xatoi.h"
 #include "timer.h"
@@ -47,10 +47,10 @@
 #include "help.h"
 #include "main.h"
 
-struct thread_data {
-  const struct iface_mode *mode;
-  const struct context    *ctx;
-  struct loramac_config   *config;
+struct io_thread_data {
+  const struct iface_mode     *mode;
+  const struct context        *ctx;
+  const struct loramac_config *config;
 };
 
 static void uint_usleep(unsigned int us)
@@ -83,14 +83,24 @@ static void configure_gpio(const struct context *ctx)
   }
 }
 
+static void initialize_driver(const struct context *ctx,
+                              const char *device, speed_t speed)
+{
+  /* initialize serial */
+  serial_init(device, speed);
+  IF_VERBOSE(ctx, printf("Serial initialized!\n"));
+
+  /* configure GPIO */
+  configure_gpio(ctx);
+}
+
 static void * output_thread_func(void *p)
 {
-  struct thread_data *data = (struct thread_data *)p;
+  struct io_thread_data *data = (struct io_thread_data *)p;
 
-  data->mode->input(data->ctx);
+  data->mode->start(data->ctx);
 
-  /* FIXME: should return correctly */
-  return NULL;
+  return NULL; /* FIXME: should return correctly */
 }
 
 static void * input_thread_func(void *p)
@@ -103,10 +113,26 @@ static void * input_thread_func(void *p)
   return NULL;
 }
 
-static void display_mode(const struct iface_mode *mode, void *data)
+static void start_io_threads(const struct context *ctx,
+                             const struct loramac_config *loramac)
 {
-  UNUSED(data);
-  printf("%s\t%s\n", mode->name, mode->description);
+  pthread_t output_thread, input_thread;
+  int err;
+
+  struct io_thread_data data = (struct io_thread_data){
+    .mode   = &iface_mode,
+    .ctx    = ctx,
+    .config = loramac
+  };
+  err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
+  err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
+  if(err)
+    errx(EXIT_FAILURE, "cannot create threads");
+
+  /* FIXME: read return value */
+  pthread_join(output_thread, NULL);
+  pthread_join(input_thread, NULL);
+
 }
 
 static void display_summary(const struct iface_mode *mode,
@@ -141,9 +167,10 @@ static void display_summary(const struct iface_mode *mode,
   }
 }
 
-static void print_help(const char *name)
+static void print_help(const char *name, const char *mode_name,
+                       struct opt_help *extra_messages)
 {
-  struct opt_help messages[] = {
+  struct opt_help common_messages[] = {
     { 'h', "help",          "Show this help message" },
     { 'V', "version",       "Show version information" },
     { 'v', "verbose",       "Enable verbose mode" },
@@ -157,33 +184,24 @@ static void print_help(const char *name)
     { 't', "timeout",         "ACK timeout in microseconds (default 2 seconds)" },
     { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 500 ms)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
-    { 'm', "mode",            "Interface mode (use ? or list to display available modes)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)"},
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
     { 0,   "irq",             "IRQ RPi GPIO" },
     { 0,   "cts",             "CTS RPi GPIO" },
     { 0,   "reset",           "RESET RPi GPIO" },
-
-    /* mode specific options */
-    /* FIXME: we need separate commands! */
-    /* ping mode */
-    { 0,   "size",     "Number of data bytes to be sent" },
-    { 0,   "count",    "Stop after sending count messages" },
-    { 0,   "flood",    "Use a period/backspace display for the messages sent/received" },
-    { 0,   "interval", "Wait interval milliseconds between each message" },
     { 0, NULL, NULL }
   };
 
-  help(name, "[OPTIONS] source device", messages);
+  help(name, "[OPTIONS] source device", common_messages);
+  fprintf(stderr, "\nExtra options for %s mode:\n", mode_name);
+  help(name, NULL, extra_messages);
 }
 
 int main(int argc, char *argv[])
 {
-  pthread_t output_thread, input_thread;
   const char *prog_name;
   const char *device;
   const char *speed_str = strdup("9600");
-  const struct iface_mode *mode = &stdio_mode;
   struct context ctx = {
     .verbose    = 0,
     .dst_mac    = 0xffff,
@@ -212,7 +230,6 @@ int main(int argc, char *argv[])
     .flags           = 0,
     .data            = &ctx
   };
-  struct thread_data data;
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
   int err;
@@ -222,13 +239,10 @@ int main(int argc, char *argv[])
     OPT_IRQ,
     OPT_CTS,
     OPT_RESET,
-    OPT_SIZE,
-    OPT_COUNT,
-    OPT_FLOOD,
-    OPT_INTERVAL
   };
 
-  struct option opts[] = {
+  /* Common options used by all modes. */
+  struct option common_opts[] = {
     { "help", no_argument, NULL, 'h' },
     { "version", no_argument, NULL, 'V' },
     { "verbose", no_argument, NULL, 'v' },
@@ -245,7 +259,6 @@ int main(int argc, char *argv[])
     { "timeout", required_argument, NULL, 't' },
     { "sifs", required_argument, NULL, 's' },
     { "retransmissions", required_argument, NULL, 'r' },
-    { "mode", required_argument, NULL, 'm' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
 
@@ -253,23 +266,28 @@ int main(int argc, char *argv[])
     { "irq", required_argument, NULL, OPT_IRQ },
     { "cts", required_argument, NULL, OPT_CTS },
     { "reset", required_argument, NULL, OPT_RESET },
-
-    /* mode specific options */
-    /* ping mode */
-    { "size", required_argument, NULL, OPT_SIZE },
-    { "count", required_argument, NULL, OPT_COUNT },
-    { "flood", required_argument, NULL, OPT_FLOOD },
-    { "interval", required_argument, NULL, OPT_INTERVAL },
     { NULL, 0, NULL, 0 }
   };
+
+  /* Options string and long options
+     structure are merged from both
+     the common options and the mode
+     (stdio, ping, ...) options. */
+  char * optstring_merged    = strcat_dup("hVvpibat:s:r:B:d:", iface_mode.optstring);
+  struct option *opts_merged = merge_opts(common_opts, iface_mode.long_opts);
 
   prog_name = basename(argv[0]);
 
   while(1) {
-    int c = getopt_long(argc, argv, "hVvpibat:s:r:m:B:d:", opts, NULL);
+    int c = getopt_long(argc, argv, optstring_merged, opts_merged, NULL);
 
     if(c == -1)
       break;
+
+    /* parse mode options first */
+    if(iface_mode.parse_option(&ctx, c))
+      continue; /* this was a mode option, skip parsing common options */
+
     switch(c) {
     case OPT_IRQ:
       ctx.gpio_irq = xatou(optarg, &err);
@@ -326,39 +344,6 @@ int main(int argc, char *argv[])
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
       break;
-    case OPT_SIZE:
-      ctx.size = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse packet size");
-      if(ctx.size > (LORAMAC_MAX_PAYLOAD - PING_HDR_SIZE))
-        errx(EXIT_FAILURE, "packet size too long");
-      break;
-    case OPT_COUNT:
-      ctx.count = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse count");
-      break;
-    case OPT_INTERVAL:
-      ctx.interval = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse interval");
-    case 'm':
-      if(!strcmp(optarg, "list") || !strcmp(optarg, "?")) {
-        walk_modes(display_mode, NULL);
-
-        exit_status = EXIT_SUCCESS;
-        goto EXIT;
-      }
-
-      mode = select_mode_by_name(optarg);
-      if(!mode) {
-        /* mode not found */
-        fprintf(stderr, "error: Iface mode \"%s\" not found.\n"
-                        "       Use list or ? to display available modes\n",
-                optarg);
-        goto EXIT;
-      }
-      break;
     case 'B':
       speed_str = strdup(optarg);
       speed = baud(optarg);
@@ -376,7 +361,7 @@ int main(int argc, char *argv[])
     case 'h':
       exit_status = EXIT_SUCCESS;
     default:
-      print_help(prog_name);
+      print_help(prog_name, iface_mode.name, iface_mode.extra_messages);
       goto EXIT;
     }
   }
@@ -385,7 +370,7 @@ int main(int argc, char *argv[])
   argv += optind;
 
   if(argc != 2) {
-    print_help(prog_name);
+    print_help(prog_name, iface_mode.name, iface_mode.extra_messages);
     goto EXIT;
   }
 
@@ -395,35 +380,27 @@ int main(int argc, char *argv[])
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
-  IF_VERBOSE(&ctx, display_summary(mode, &loramac, &ctx, ctx.dst_mac, device, speed_str));
+  IF_VERBOSE(&ctx, display_summary(&iface_mode, &loramac, &ctx, ctx.dst_mac, device, speed_str));
 
-  /* initialize serial */
-  serial_init(device, speed);
-  IF_VERBOSE(&ctx, printf("Serial initialized!\n"));
+  initialize_driver(&ctx, device, speed);
+  iface_mode.init(&ctx, &loramac);
 
-  /* configure GPIO */
-  configure_gpio(&ctx);
-
-  /* initialize mode */
-  mode->before(&ctx, &loramac);
-
-  /* initialize LoRaMAC */
+  /* Initialize LoRaMAC layer.
+     The interface mode still has to configure
+     the loramac configuration structure. That
+     is why we initialize the MAC layer after
+     the mode. */
   loramac_init(&loramac);
 
-  data = (struct thread_data){
-    .mode   = mode,
-    .ctx    = &ctx,
-    .config = &loramac
-  };
-  err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
-  err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
-  if(err)
-    errx(EXIT_FAILURE, "cannot create threads");
+  /* Start the threads that will handle the IO
+     with the LoRaMAC layer. That is:
+       - The input thread that read new messages from UART.
+       - The output thread that send message according to iface_mode. */
+  start_io_threads(&ctx, &loramac);
 
-  /* FIXME: read return value */
-  pthread_join(output_thread, NULL);
-  pthread_join(input_thread, NULL);
-
+  /* IO threads returned, this is the end.
+     We can release everything. */
+  iface_mode.destroy(&ctx);
 EXIT:
   free((void *)speed_str);
   exit(exit_status);

@@ -27,6 +27,8 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include "safe-call.h"
+
 void fill_with_random(unsigned char *buf, unsigned int size)
 {
   int i;
@@ -72,3 +74,24 @@ void * memdup(const void *buf, size_t size)
 
   return memcpy(new_buf, buf, size);
 }
+
+char * strcat_dup(const char *a, const char *b)
+{
+  int len_a = strlen(a);
+  int len_b = strlen(b);
+  int len   = MAX(len_a, len_b); /* len without terminal '\0' */
+
+  /* allocate memory for the concatenated string
+     here we take into account the terminal '\0' */
+  char *concat = xmalloc(len + 1);
+
+  /* terminal '\0' */
+  concat[len] = '\0';
+
+  /* merge strings */
+  memcpy(concat,         a, len_a);
+  memcpy(concat + len_a, b, len_b);
+
+  return concat;
+}
+

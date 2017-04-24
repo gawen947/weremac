@@ -32,23 +32,37 @@
    This describe how the program will
    interface itself to the LoRaMAC device,
    hence its behavior.
-   The available modes are listed in "mode-list.h". */
+
+   The actual iface_mode used is declared
+   in the mode unit linked with the common
+   code. */
 struct iface_mode {
   const char *name;
   const char *description;
 
-  /* executed before/after module execution */
-  void (*before)(const struct context *ctx,
-                 struct loramac_config *loramac);
-  void (*input)(const struct context *ctx);
-  void (*after)(const struct context *ctx);
-};
+  /* argument parsing */
+  const char      *optstring;
+  struct option   *long_opts;
+  struct opt_help *extra_messages;
 
-/* Select a mode by its name. Returns null if mode is not found. */
-const struct iface_mode * select_mode_by_name(const char *name);
+  /* Parse a getopt option for one of the mode specific options.
+     Return 0 if the option is unknown by this module (which means
+     that the next module or the common options can be parsed
+     instead). Return 1 if the option was parsed (and the parsing
+     should continue to the next option). */
+  int (*parse_option)(const struct context *ctx, int c);
 
-/* List all modes. This is useful for example to display a list of
-   all available modes along with their description. */
-void walk_modes(void (*visit)(const struct iface_mode *mode, void *data), void *data);
+  /* Executed before/after module execution.
+     These functions are used by the module to configure
+     the LoRaMAC layer (such as the recv function), and
+     create/destroy mode specific structures. */
+  void (*init)(const struct context *ctx, struct loramac_config *loramac);
+  void (*destroy)(const struct context *ctx);
+
+  /* Actual behavior of the module.
+     This is the code that will eventually send data
+     to the LoRaMAC layer. */
+  void (*start)(const struct context *ctx);
+} iface_mode;
 
 #endif /* _MODES_H_ */

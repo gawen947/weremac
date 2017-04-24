@@ -33,7 +33,8 @@ void help(const char *name, const char *usage, const struct opt_help opts[])
   int size;
   int max = 0;
 
-  fprintf(stderr, "usage: %s %s\n", name, usage);
+  if(usage)
+    fprintf(stderr, "usage: %s %s\n", name, usage);
 
   /* maximum option names size for padding */
   for(opt = opts ; opt->name_long ; opt++) {

@@ -8,7 +8,13 @@ SRC = $(wildcard *.c)
 OBJ = $(foreach obj, $(SRC:.c=.o), $(notdir $(obj)))
 DEP = $(SRC:.c=.d)
 
-TARGET = loramac
+TARGETS = loramac-stdio
+
+COMMON_OBJ = string-utils.o rpi-gpio.o timer.o uart.o lock.o \
+						 common.o xatoi.o version.o safe-call.o help.o \
+						 loramac-str.o loramac.o dump.o crc-ccitt.o common.o \
+						 options.o main.c
+STDIO_OBJ  = stdio-mode.c $(COMMON_OBJ)
 
 PREFIX ?= /usr/local
 BIN    ?= /bin
@@ -29,9 +35,9 @@ endif
 
 .PHONY: all clean
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(OBJ)
+loramac-stdio: $(STDIO_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
@@ -45,7 +51,7 @@ clean:
 
 install:
 	$(MKDIR) -p $(DESTDIR)/$(PREFIX)/$(BIN)
-	$(INSTALL_BIN) trace $(DESTDIR)/$(PREFIX)/$(BIN)
+	$(INSTALL_BIN) loramac-stdio $(DESTDIR)/$(PREFIX)/$(BIN)
 
 uninstall:
 	$(RM) $(DESTDIR)/$(PREFIX)/$(BIN)/$(TARGET)

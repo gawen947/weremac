@@ -41,4 +41,8 @@ const char * tv_to_str(const struct timeval *tv);
 /* Duplicate a buffer. */
 void * memdup(const void *buf, size_t size);
 
+/* Concatenate two strings in a new buffer large
+   enough to contain the two concatenated strings. */
+char * strcat_dup(const char *a, const char *b);
+
 #endif /* _STRING_UTILS_H_ */

@@ -25,12 +25,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "loramac.h"
 #include "main.h"
 #include "dump.h"
 #include "common.h"
-#include "stdio-mode.h"
+#include "mode.h"
 
 #define BUF_SIZE 0x80
 
@@ -45,14 +46,13 @@ static void cb_recv(uint16_t src, uint16_t dst,
   hex_dump(payload, payload_size);
 }
 
-static void before(const struct context  *ctx,
-                   struct loramac_config *loramac)
+static void init(const struct context  *ctx, struct loramac_config *loramac)
 {
   UNUSED(ctx);
   loramac->cb_recv = cb_recv;
 }
 
-static void input(const struct context *ctx)
+static void start(const struct context *ctx)
 {
   char buf[BUF_SIZE];
 
@@ -69,16 +69,31 @@ static void input(const struct context *ctx)
   }
 }
 
-static void after(const struct context *ctx)
+static void destroy(const struct context *ctx)
 {
   UNUSED(ctx);
 }
 
-struct iface_mode stdio_mode = {
-  .name = "stdio",
+static int parse_option(const struct context *ctx, int c)
+{
+  UNUSED(ctx);
+  UNUSED(c);
+
+  return 0; /* option unknown by this module,
+               can be be parsed by next module */
+}
+
+struct option stdio_opts[] = { { NULL, 0, NULL, 0 } };
+
+struct iface_mode iface_mode = {
+  .name        = "stdio",
   .description = "Read output frame and print received frames on stdio",
 
-  .before = before,
-  .input  = input,
-  .after  = after
+  .optstring    = "",
+  .long_opts    = stdio_opts,
+  .parse_option = parse_option,
+
+  .init    = init,
+  .destroy = destroy,
+  .start   = start
 };
