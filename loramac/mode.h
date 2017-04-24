@@ -41,9 +41,9 @@ struct iface_mode {
   const char *description;
 
   /* argument parsing */
-  const char      *optstring;
-  struct option   *long_opts;
-  struct opt_help *extra_messages;
+  const char      *optstring;      /* mode short options string */
+  struct option   *long_opts;      /* mode long options structures */
+  struct opt_help *extra_messages; /* mode help messages */
 
   /* Parse a getopt option for one of the mode specific options.
      Return 0 if the option is unknown by this module (which means

@@ -28,6 +28,7 @@
 #include <getopt.h>
 
 #include "loramac.h"
+#include "help.h"
 #include "main.h"
 #include "dump.h"
 #include "common.h"
@@ -83,15 +84,16 @@ static int parse_option(const struct context *ctx, int c)
                can be be parsed by next module */
 }
 
-struct option stdio_opts[] = { { NULL, 0, NULL, 0 } };
+struct option stdio_opts[]       = { { NULL, 0, NULL, 0 } };
 
 struct iface_mode iface_mode = {
   .name        = "stdio",
   .description = "Read output frame and print received frames on stdio",
 
-  .optstring    = "",
-  .long_opts    = stdio_opts,
-  .parse_option = parse_option,
+  .optstring      = "",
+  .long_opts      = stdio_opts,
+  .extra_messages = NULL,
+  .parse_option   = parse_option,
 
   .init    = init,
   .destroy = destroy,
