@@ -406,5 +406,7 @@ int main(int argc, char *argv[])
   iface_mode.destroy(&ctx);
 EXIT:
   free((void *)speed_str);
+  free(optstring_merged);
+  free(opts_merged);
   exit(exit_status);
 }
