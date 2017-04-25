@@ -149,7 +149,9 @@ int loramac_recv_frame(void);
 /* Called by the platform dependent part of the driver when a character
    has been received on UART from the device. This function can block
    when a full frame has been received. It may also block indefinitely
-   if the receive callback itself is blocked. */
+   if the receive callback itself is blocked. Note that this function
+   is *NOT* reentrant. You have to wait for its completion until you
+   can call it again. */
 int loramac_uart_putc(unsigned char c);
 
 #endif /* _LORAMAC_H_ */

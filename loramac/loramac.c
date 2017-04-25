@@ -243,9 +243,13 @@ PARSING_COMPLETED:
        otherwise the message is not sent correctly.
        Note that we don't use usleep and that the
        SIFS time can be quite large (>500ms). */
-    mac_conf.start_timer(mac_conf.sifs);
-    mac_conf.wait_timer();
-    send_ack(src_mac, seqno);
+    mac_conf.lock();
+    {
+      mac_conf.start_timer(mac_conf.sifs);
+      mac_conf.wait_timer();
+      send_ack(src_mac, seqno);
+    }
+    mac_conf.unlock();
   }
 
   /* send frame to upper layer */
@@ -272,27 +276,20 @@ int loramac_uart_putc(unsigned char c)
   static uint8_t size;
   int status = LORAMAC_RCV_CONT; /* need more data */
 
-  /* We lock the packet buffer completely on receive.
-     This may lock for long period of time if we have
-     to send an ACK or the receive callback is blocked. */
-  mac_conf.lock();
-  {
-    if(rcv_ptr == rcv_pktbuf)
-      /* first byte (size) */
-      size = c + 1;
+  if(rcv_ptr == rcv_pktbuf)
+    /* first byte (size) */
+    size = c + 1;
 
-    *rcv_ptr++ = c;
-    size--;
+  *rcv_ptr++ = c;
+  size--;
 
-    if(size == 0) {
-      /* full frame received */
-      status = mac_conf.recv_frame();
+  if(size == 0) {
+    /* full frame received */
+    status = mac_conf.recv_frame();
 
-      /* reset pktbuf */
-      rcv_ptr = rcv_pktbuf;
-    }
+    /* reset pktbuf */
+    rcv_ptr = rcv_pktbuf;
   }
-  mac_conf.unlock();
 
   return status;
 }
