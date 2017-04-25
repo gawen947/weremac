@@ -82,7 +82,7 @@ static int loramac_send_helper(uint16_t dst, const void *payload, unsigned int p
   /* copy header */
   COPY_U16(crc, buf, mac_conf.mac_address);
   COPY_U16(crc, buf, dst);
-  COPY_U8(crc, buf, ++seqno);
+  COPY_U8(crc, buf, seqno);
 
   /* copy payload */
   if(payload_size > LORAMAC_MAX_PAYLOAD)
@@ -127,6 +127,8 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
      (including ACK and retransmissions). */
   mac_conf.lock();
   {
+    seqno++; /* Use same sequence number for retransmitted packets. */
+
     for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
       ret = loramac_send_helper(dst, payload, payload_size);
 
