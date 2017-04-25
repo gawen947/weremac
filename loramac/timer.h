@@ -29,7 +29,8 @@
 void init_timer(void);
 
 /* Start/wait/stop the timer.
-   The stop function drops any pending wait. */
+   The stop function drops any pending wait.
+   Duration are given in microseconds. */
 void start_timer(unsigned int timeout);
 void wait_timer(void);
 void stop_timer(void);

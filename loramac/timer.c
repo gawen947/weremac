@@ -59,7 +59,8 @@ void start_timer(unsigned int timeout)
   /* one shot timer */
   pthread_mutex_lock(&lock);
   {
-    timer.it_value.tv_usec = timeout;
+    timer.it_value = (struct timeval){ .tv_sec  = timeout / 1000000,
+                                       .tv_usec = timeout % 1000000 };
     setitimer(ITIMER_REAL, &timer, NULL);
   }
   pthread_mutex_unlock(&lock);
@@ -69,7 +70,7 @@ void wait_timer(void)
 {
   pthread_mutex_lock(&lock);
   {
-    if(timer.it_value.tv_usec)
+    if(timer.it_value.tv_sec || timer.it_value.tv_usec)
       pthread_cond_wait(&cond, &lock);
   }
   pthread_mutex_unlock(&lock);
