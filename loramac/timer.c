@@ -26,10 +26,12 @@
 # define _POSIX_SOURCE 1
 #endif /* __linux__ */
 
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <err.h>
 
 #include "common.h"
 #include "timer.h"
@@ -48,7 +50,16 @@ void timer_expired(int signum)
 void init_timer(void)
 {
   struct sigaction sa;
+  sigset_t set;
 
+  /* unblock SIGALRM */
+  sigemptyset(&set);
+  sigaddset(&set, SIGALRM);
+
+  if(pthread_sigmask(SIG_UNBLOCK, &set, NULL))
+    err(EXIT_FAILURE, "cannot unblock signal");
+
+  /* configure handler */
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = &timer_expired;
   sigaction(SIGALRM, &sa, NULL);
