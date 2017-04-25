@@ -29,11 +29,13 @@
 
 /* Describe flags and status as strings. */
 const char * loramac_flag2str(enum loramac_flags flag);
+const char * loramac_init2str(enum loramac_init_status status);
 const char * loramac_rcv2str(enum loramac_receive_status status);
 const char * loramac_send2str(enum loramac_send_status status);
 
 /* Select flags and status from strings. */
 enum loramac_flags loramac_str2flag(const char *s);
+enum loramac_init_status loramac_str2init(const char *s);
 enum loramac_receive_status loramac_str2rcv(const char *s);
 enum loramac_send_status loramac_str2send(const char *s);
 

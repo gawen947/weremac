@@ -398,7 +398,12 @@ int main(int argc, char *argv[])
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
-  IF_VERBOSE(&ctx, display_summary(&iface_mode, &loramac, &ctx, ctx.dst_mac, device, speed_str));
+  IF_VERBOSE(&ctx, display_summary(&iface_mode,
+                                   &loramac,
+                                   &ctx,
+                                   ctx.dst_mac,
+                                   device,
+                                   speed_str));
 
   initialize_driver(&ctx, device, speed);
   iface_mode.init(&ctx, &loramac);
@@ -413,7 +418,11 @@ int main(int argc, char *argv[])
      the loramac configuration structure. That
      is why we initialize the MAC layer after
      the mode. */
-  loramac_init(&loramac);
+  err = loramac_init(&loramac);
+  if(err < 0)
+    errx(EXIT_FAILURE, "cannot initialize LoRaMAC: %s",
+                       loramac_init2str(err));
+
 
   /* Start the threads that will handle the IO
      with the LoRaMAC layer. That is:

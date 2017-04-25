@@ -42,6 +42,22 @@ const char * loramac_flag2str(enum loramac_flags flag)
   }
 }
 
+const char * loramac_init2str(enum loramac_init_status status)
+{
+  switch(status) {
+  case LORAMAC_INIT_SUCCESS:
+    return "success";
+  case LORAMAC_INIT_TIMEVAL:
+    return "invalid time value";
+  case LORAMAC_INIT_ACK_FIFO:
+    return "ACK FIFO too large";
+  case LORAMAC_INIT_OOM:
+    return "out of memory";
+  default:
+    return "unknown init status";
+  }
+}
+
 const char * loramac_rcv2str(enum loramac_receive_status status)
 {
   switch(status) {
@@ -86,6 +102,19 @@ enum loramac_flags lormac_str2flag(const char *s)
     return LORAMAC_NOBROADCAST;
   else if(!strcmp("no-ack", s))
     return LORAMAC_NOACK;
+  return 0;
+}
+
+enum loramac_init_status loramac_str2init(const char *s)
+{
+  if(!strcmp("success", s))
+    return LORAMAC_INIT_SUCCESS;
+  else if(!strcmp("timeval", s))
+    return LORAMAC_INIT_TIMEVAL;
+  else if(!strcmp("ack-fifo", s))
+    return LORAMAC_INIT_ACK_FIFO;
+  else if(!strcmp("oom", s))
+    return LORAMAC_INIT_OOM;
   return 0;
 }
 

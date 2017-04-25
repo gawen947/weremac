@@ -42,6 +42,11 @@
 #define LORAMAC_ACK_SIZE    (sizeof(uint16_t) + sizeof(uint8_t))     /* src, seqno */
 #define LORAMAC_MAX_PAYLOAD LORAMAC_MAX_FRAME - LORAMAC_HDR_SIZE
 
+/* Maximum size for the receiver ACK FIFO.
+   That is the number of different senders that can
+   send a frame to the receiver during one timeout. */
+#define LORAMAC_MAX_ACK_FIFO 32
+
 /*
    LoRaMAC data frame format:
      [src_mac (16)][dst_mac (16)][seqno (8)]<payload...>[crc-ccitt(16)]
@@ -56,6 +61,14 @@ enum loramac_flags {
   LORAMAC_INVALID     = 0x2, /* do not filter invalid packets (packet header, CRC) */
   LORAMAC_NOBROADCAST = 0x4, /* ignore broadcast messages (0xffff) */
   LORAMAC_NOACK       = 0x8, /* do not answer nor expect ACKs */
+};
+
+/* Initialization status */
+enum loramac_init_status {
+  LORAMAC_INIT_SUCCESS,
+  LORAMAC_INIT_TIMEVAL,   /* Invalid value for timeout or SIFS */
+  LORAMAC_INIT_ACK_FIFO,  /* ACK FIFO too large */
+  LORAMAC_INIT_OOM,       /* Out of memory */
 };
 
 /* Status of a received frame */
@@ -110,6 +123,10 @@ struct loramac_config {
   void (*lock)(void);
   void (*unlock)(void);
 
+  /* When ACK are used, the driver needs to allocate an array
+     for a FIFO which depends on the timeout and SIFS values. */
+  void * (*malloc)(unsigned int size);
+
   /* Not all platform provide byte ordering functions
      with the same names as POSIX. */
   uint16_t (*htons)(uint16_t v);
@@ -134,7 +151,7 @@ struct loramac_config {
 };
 
 /* Initialize the LoRaMAC driver (see loramac_config) */
-void loramac_init(const struct loramac_config *conf);
+int loramac_init(const struct loramac_config *conf);
 
 /* Assemble and send a frame to the specified destination using LoRaMAC.
    The broadcast address is 0xffff. When ACK is enabled, this function

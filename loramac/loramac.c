@@ -35,7 +35,7 @@
    source mac address and flags. */
 static struct loramac_config mac_conf;
 
-/* Internal state */
+/* Sender internal state */
 static uint8_t seqno;
 static uint8_t last_ack_seqno;
 static unsigned int wait_ack;
@@ -44,9 +44,90 @@ static unsigned int wait_ack;
 static unsigned char snd_pktbuf[LORAMAC_MAX_FRAME + 1];
 static unsigned char rcv_pktbuf[LORAMAC_MAX_FRAME + 1];
 
-void loramac_init(const struct loramac_config *conf)
+/* Receiver ACK FIFO.
+   We keep the seqno of the last ACK for the last n senders.
+   We can use this to avoid displaying frames duplicated
+   because of retransmissions. It is allocated once and we
+   can ensure that it is large enough for the configured
+   value of timeout and SIFS. */
+static int oldest; /* index of oldest element in FIFO */
+static int newest; /* index of newest element in FIFO */
+static int ack_fifo_size; /* size of the FIFO */
+static struct last_ack {
+  uint16_t sender;
+  uint8_t  seqno;
+} *ack_fifo;
+
+/* Search the ACK FIFO for a sender.
+   Returns -1 if it wasn't found. */
+static int ack_fifo_search(uint16_t sender)
 {
+  int i;
+  for(i = 0 ; i < ack_fifo_size ; i++)
+    if(ack_fifo[i].sender != 0xffff && ack_fifo[i].sender == sender)
+      return i;
+  return -1;
+}
+
+/* Insert a new sender into the FIFO.
+   This does not check if the sender is already present.
+   If the queue is full, it always removes the oldest
+   element and insert this one in place. */
+static void ack_fifo_insert(uint16_t sender, uint8_t seqno)
+{
+  if((newest + 1) % ack_fifo_size == oldest) {
+    /* queue is full */
+    ack_fifo[oldest] = (struct last_ack){ .sender = sender,
+                                          .seqno  = seqno };
+    oldest = (oldest + 1) % ack_fifo_size;
+  }
+  else {
+    /* room available */
+    newest = (newest + 1) % ack_fifo_size;
+    ack_fifo[newest] = (struct last_ack){ .sender = sender,
+                                          .seqno  = seqno };
+  }
+}
+
+int loramac_init(const struct loramac_config *conf)
+{
+  int i;
+
   mac_conf = *conf;
+
+  /* SIFS is the time until the receiver can send its ACK.
+     So if timeout is lower than this value, ACKs will never
+     be received in time by the sender. */
+  if(mac_conf.timeout < mac_conf.sifs)
+    return LORAMAC_INIT_TIMEVAL;
+
+  /* The optimal ACK FIFO size on node 0 is for all node i:
+       size_0 = max_i(timeout_i) / SIFS_0 + 1
+     For simplification here we suppose that:
+       max_i(timeout_i) = timeout_0
+     Generally this value is really low since timeout is
+     only slightly larger than SIFS. */
+  ack_fifo_size = mac_conf.timeout / mac_conf.sifs + 1;
+  if(ack_fifo_size > LORAMAC_MAX_ACK_FIFO)
+    return LORAMAC_INIT_ACK_FIFO;
+
+  ack_fifo = mac_conf.malloc(sizeof(struct last_ack) * ack_fifo_size);
+  if(!ack_fifo)
+    return LORAMAC_INIT_OOM;
+
+  /* Initialize all sender to 0xffff.
+     We know that a sender will never
+     have 0xffff as its source address
+     since this is the broadcast address.
+
+     Note that we also initialize the seqno to 0.
+     Otherwise an attacker might use this to snoop
+     around into uninitialized memory. */
+  for(i = 0 ; i < ack_fifo_size ; i++)
+    ack_fifo[i] = (struct last_ack){ .sender = 0xffff,
+                                     .seqno  = 0 };
+
+  return LORAMAC_INIT_SUCCESS;
 }
 
 #define COPY_U16(crc, buf, v) do {                \
@@ -197,6 +278,7 @@ static int recv_data(unsigned int size)
   uint16_t src_mac = 0x0000; /* invalid address */
   uint8_t  seqno;
   int status = LORAMAC_RCV_SUCCESS;
+  int i;
 
   /* for CRC we skip the size (first byte) and frame CRC (last two bytes) */
   expected_crc = crc_ccitt(rcv_pktbuf + 1, size - 2, expected_crc);
@@ -254,11 +336,24 @@ PARSING_COMPLETED:
     mac_conf.unlock();
   }
 
+  /* check for retransmissions */
+  i = ack_fifo_search(src_mac);
+  if(i < 0)
+    ack_fifo_insert(src_mac, seqno);
+  else if(seqno == ack_fifo[i].seqno)
+    /* skip retransmission */
+    goto EXIT;
+  else
+    /* update seqno */
+    ack_fifo[i].seqno = seqno;
+
   /* send frame to upper layer */
   mac_conf.cb_recv(src_mac, dst_mac,
                    rcv_pktbuf + sizeof(uint16_t) * 2 + sizeof(uint8_t) + 1,
                    size - LORAMAC_HDR_SIZE,
                    status, mac_conf.data);
+
+EXIT:
   return status;
 }
 
