@@ -103,7 +103,7 @@ void stop_timer(void)
   /* stop and unlock */
   pthread_mutex_lock(&lock);
   {
-    block_alrm();
+    block_signal();
 
     timer.it_value.tv_usec = 0;
     pthread_cond_signal(&cond);
