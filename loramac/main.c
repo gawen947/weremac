@@ -402,7 +402,11 @@ int main(int argc, char *argv[])
 
   initialize_driver(&ctx, device, speed);
   iface_mode.init(&ctx, &loramac);
-  init_timer();
+
+  /* Block the SIGALRM signal so that it is
+     not received by the main thread when
+     a timer is triggered. */
+  thread_block_signals();
 
   /* Initialize LoRaMAC layer.
      The interface mode still has to configure

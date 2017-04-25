@@ -25,9 +25,6 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
-/* Setup the timers */
-void init_timer(void);
-
 /* Start/wait/stop the timer.
    The stop function drops any pending wait.
    Duration are given in microseconds. */

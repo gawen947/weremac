@@ -47,7 +47,7 @@ void timer_expired(int signum)
   stop_timer();
 }
 
-void init_timer(void)
+static void setup_signal(void)
 {
   struct sigaction sa;
   sigset_t set;
@@ -65,11 +65,22 @@ void init_timer(void)
   sigaction(SIGALRM, &sa, NULL);
 }
 
+static void block_signal(void)
+{
+  sigset_t set;
+
+  /* block SIGALRM */
+  sigemptyset(&set);
+  sigaddset(&set, SIGALRM);
+}
+
 void start_timer(unsigned int timeout)
 {
   /* one shot timer */
   pthread_mutex_lock(&lock);
   {
+    setup_signal();
+
     timer.it_value = (struct timeval){ .tv_sec  = timeout / 1000000,
                                        .tv_usec = timeout % 1000000 };
     setitimer(ITIMER_REAL, &timer, NULL);
@@ -92,6 +103,8 @@ void stop_timer(void)
   /* stop and unlock */
   pthread_mutex_lock(&lock);
   {
+    block_alrm();
+
     timer.it_value.tv_usec = 0;
     pthread_cond_signal(&cond);
   }
