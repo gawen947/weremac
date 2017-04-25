@@ -127,7 +127,7 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
      (including ACK and retransmissions). */
   mac_conf.lock();
   {
-    seqno++; /* Use same sequence number for retransmitted packets. */
+    seqno++; /* Use same sequence number for retransmitted frames. */
 
     for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
       ret = loramac_send_helper(dst, payload, payload_size);
