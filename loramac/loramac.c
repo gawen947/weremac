@@ -109,8 +109,8 @@ static int loramac_send_helper(uint16_t dst, const void *payload, unsigned int p
     return LORAMAC_SND_SUCCESS;
 
   wait_ack = 1;
-  mac_conf.start_ack_timer(mac_conf.timeout);
-  mac_conf.wait_ack_timer();
+  mac_conf.start_timer(mac_conf.timeout);
+  mac_conf.wait_timer();
 
   if(last_ack_seqno != seqno)
     return LORAMAC_SND_NOACK;
@@ -122,12 +122,17 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
   int ret = LORAMAC_SND_NOACK;
   int retransmission;
 
+  /* We lock the packet buffer when sending a packet.
+     This will lock for the complete transmission
+     (including ACK and retransmissions). */
   mac_conf.lock();
-  for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
-    ret = loramac_send_helper(dst, payload, payload_size);
+  {
+    for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
+      ret = loramac_send_helper(dst, payload, payload_size);
 
-    if(ret == LORAMAC_SND_SUCCESS)
-      break;
+      if(ret == LORAMAC_SND_SUCCESS)
+        break;
+    }
   }
   mac_conf.unlock();
 
@@ -175,7 +180,7 @@ PARSING_COMPLETED:
      src_mac == mac_conf.mac_address) {
     last_ack_seqno = seqno;
     wait_ack = 0;
-    mac_conf.stop_ack_timer();
+    mac_conf.stop_timer();
   }
 
   return status;
@@ -234,7 +239,12 @@ PARSING_COMPLETED:
   /* send ACK when enabled */
   if(!(mac_conf.flags & LORAMAC_NOACK) && \
      status == LORAMAC_RCV_SUCCESS) {
-    mac_conf.usleep(mac_conf.sifs);
+    /* We have to wait before sending the ACK,
+       otherwise the message is not sent correctly.
+       Note that we don't use usleep and that the
+       SIFS time can be quite large (>500ms). */
+    mac_conf.start_timer(mac_conf.sifs);
+    mac_conf.wait_timer();
     send_ack(src_mac, seqno);
   }
 
@@ -252,7 +262,8 @@ int loramac_recv_frame(void)
 
   if(size == LORAMAC_ACK_SIZE)
     return recv_ack();
-  return recv_data(size);
+  else
+    return recv_data(size);
 }
 
 int loramac_uart_putc(unsigned char c)
@@ -261,20 +272,27 @@ int loramac_uart_putc(unsigned char c)
   static uint8_t size;
   int status = LORAMAC_RCV_CONT; /* need more data */
 
-  if(rcv_ptr == rcv_pktbuf)
-    /* first byte (size) */
-    size = c + 1;
+  /* We lock the packet buffer completely on receive.
+     This may lock for long period of time if we have
+     to send an ACK or the receive callback is blocked. */
+  mac_conf.lock();
+  {
+    if(rcv_ptr == rcv_pktbuf)
+      /* first byte (size) */
+      size = c + 1;
 
-  *rcv_ptr++ = c;
-  size--;
+    *rcv_ptr++ = c;
+    size--;
 
-  if(size == 0) {
-    /* full frame received */
-    status = mac_conf.recv_frame();
+    if(size == 0) {
+      /* full frame received */
+      status = mac_conf.recv_frame();
 
-    /* reset pktbuf */
-    rcv_ptr = rcv_pktbuf;
+      /* reset pktbuf */
+      rcv_ptr = rcv_pktbuf;
+    }
   }
+  mac_conf.unlock();
 
   return status;
 }

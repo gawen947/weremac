@@ -34,7 +34,10 @@
 #define LORAMAC_MAJOR       3
 #define LORAMAC_MINOR       4
 
-#define LORAMAC_MAX_FRAME   0xff
+/* We limit the frame size to 63 bytes. After reading the code
+   on the LoRaMAC module, a larger frame would result in a buffer
+   overflow that could change the internal state of the module. */
+#define LORAMAC_MAX_FRAME   0x3f
 #define LORAMAC_HDR_SIZE    (sizeof(uint16_t) * 3 + sizeof(uint8_t)) /* src, dst, crc, seqno */
 #define LORAMAC_ACK_SIZE    (sizeof(uint16_t) + sizeof(uint8_t))     /* src, seqno */
 #define LORAMAC_MAX_PAYLOAD LORAMAC_MAX_FRAME - LORAMAC_HDR_SIZE
@@ -83,7 +86,7 @@ struct loramac_config {
      received (frames may be filtered according to the
      loramac_flags). The status argument of this function reflect
      the parsing status (see loramac_receive_status). It is also
-     possible to pass a context pointer to this callback. This 
+     possible to pass a context pointer to this callback. This
      should be initialized in loramac_config. */
   void (*cb_recv)(uint16_t src, uint16_t dst,
                   const void *payload, unsigned int payload_size,
@@ -92,17 +95,18 @@ struct loramac_config {
   /* The driver will use those two functions to start, stop and wait
      for the ACK timer. The stop function should also drop any wait in
      place on the timer. */
-  void (*start_ack_timer)(unsigned int us);
-  void (*stop_ack_timer)(void);
-  void (*wait_ack_timer)(void);
-
-  /* Sleep function used for SIFS. */
-  void (*usleep)(unsigned int us);
+  void (*start_timer)(unsigned int us);
+  void (*stop_timer)(void);
+  void (*wait_timer)(void);
 
   /* We only send one packet at a time. We are forced to do
      this unless we can start multiple referenced timers
      within the same period. So until then we lock/unlock
-     the send function to ensure this behavior. */
+     the send function to ensure this behavior. We also lock
+     the receive function that also uses the timer to send
+     its ACK in response to the received packet. Note that
+     we use the same lock for sending and receiving since we
+     don't generally send and receive at the same time. */
   void (*lock)(void);
   void (*unlock)(void);
 
@@ -143,7 +147,9 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size);
 int loramac_recv_frame(void);
 
 /* Called by the platform dependent part of the driver when a character
-   has been received on UART from the device. */
+   has been received on UART from the device. This function can block
+   when a full frame has been received. It may also block indefinitely
+   if the receive callback itself is blocked. */
 int loramac_uart_putc(unsigned char c);
 
 #endif /* _LORAMAC_H_ */

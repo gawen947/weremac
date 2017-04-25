@@ -53,11 +53,6 @@ struct io_thread_data {
   const struct loramac_config *config;
 };
 
-static void uint_usleep(unsigned int us)
-{
-  usleep(us);
-}
-
 static void configure_gpio(const struct context *ctx)
 {
   if((ctx->gpio_irq > 0) |
@@ -217,21 +212,20 @@ int main(int argc, char *argv[])
     .flood      = 0
   };
   struct loramac_config loramac = {
-    .uart_send       = uart_send,
-    .start_ack_timer = start_timer,
-    .stop_ack_timer  = stop_timer,
-    .wait_ack_timer  = wait_timer,
-    .lock            = lock,
-    .unlock          = unlock,
-    .htons           = htons,
-    .ntohs           = ntohs,
-    .usleep          = uint_usleep,
-    .recv_frame      = loramac_recv_frame,
-    .retrans         = 3,
-    .timeout         = 2000000,  /* 2 s */
-    .sifs            = 500000,   /* 500 ms */
-    .flags           = 0,
-    .data            = &ctx
+    .uart_send   = uart_send,
+    .start_timer = start_timer,
+    .stop_timer  = stop_timer,
+    .wait_timer  = wait_timer,
+    .lock        = lock,
+    .unlock      = unlock,
+    .htons       = htons,
+    .ntohs       = ntohs,
+    .recv_frame  = loramac_recv_frame,
+    .retrans     = 3,
+    .timeout     = 2000000,     /* 2 s */
+    .sifs        = 500000,      /* 500 ms */
+    .flags       = 0,
+    .data        = &ctx
   };
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
