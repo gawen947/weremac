@@ -30,6 +30,7 @@
 #include <limits.h>
 #include <string.h>
 #include <getopt.h>
+#include <signal.h>
 #include <err.h>
 
 #include "string-utils.h"
@@ -89,6 +90,21 @@ static void initialize_driver(const struct context *ctx,
   configure_gpio(ctx);
 }
 
+/* We must block those signals otherwise
+   those might be selected when the SIGALRM
+   is raised by the timers instead of the
+   main thread where the handler is configured. */
+static void thread_block_signals()
+{
+  sigset_t set;
+
+  sigemptyset(&set);
+  sigaddset(&set, SIGALRM);
+
+  if(pthread_sigmask(SIG_BLOCK, &set, NULL))
+    err(EXIT_FAILURE, "cannot block signals");
+}
+
 static void * output_thread_func(void *p)
 {
   struct io_thread_data *data = (struct io_thread_data *)p;
@@ -101,6 +117,8 @@ static void * output_thread_func(void *p)
 static void * input_thread_func(void *p)
 {
   UNUSED(p);
+
+  thread_block_signals();
 
   uart_read_loop();
 
@@ -119,6 +137,9 @@ static void start_io_threads(const struct context *ctx,
     .ctx    = ctx,
     .config = loramac
   };
+
+  thread_block_signals();
+
   err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
   err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
   if(err)
@@ -381,6 +402,7 @@ int main(int argc, char *argv[])
 
   initialize_driver(&ctx, device, speed);
   iface_mode.init(&ctx, &loramac);
+  init_timer();
 
   /* Initialize LoRaMAC layer.
      The interface mode still has to configure
