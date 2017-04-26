@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       4
+#define LORAMAC_MINOR       5
 
 /* We limit the frame size to 63 bytes. After reading the code
    on the LoRaMAC module, a larger frame would result in a buffer
