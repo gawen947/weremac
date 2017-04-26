@@ -50,7 +50,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
   putchar('\n');
   printf("FROM %04X TO %04X:\n", src, dst);
   hex_dump(payload, payload_size);
-  printf("RX STATUS: %s (%d)\n", loramac_send2str(status), status);
+  printf("RX STATUS: %s (%d)\n", loramac_rcv2str(status), status);
 }
 
 static void init(const struct context  *ctx, struct loramac_config *loramac)
