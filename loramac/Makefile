@@ -2,7 +2,7 @@ include commands.mk
 
 OPTS    := -O2
 CFLAGS  := -std=c99 $(OPTS) -fPIC -Wall
-LDFLAGS := -lpthread
+LDFLAGS := -lpthread -lrt
 
 SRC = $(wildcard *.c)
 OBJ = $(foreach obj, $(SRC:.c=.o), $(notdir $(obj)))
