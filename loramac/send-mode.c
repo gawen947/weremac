@@ -78,7 +78,7 @@ static void start(const struct context *ctx)
 
   putchar('\n');
   if(display_time)
-    printf("TIME     : %s", scale_time(nsec));
+    printf("TIME     : %s\n", scale_time(nsec));
   printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
   printf("TX COUNT : %d\n", tx);
 }
