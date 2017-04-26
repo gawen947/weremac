@@ -38,6 +38,7 @@
 #include "common.h"
 #include "mode.h"
 
+#define PROMPT   "input> "
 #define BUF_SIZE 0x80
 
 static void cb_recv(uint16_t src, uint16_t dst,
@@ -46,7 +47,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
 {
   UNUSED(data);
 
-  /* FIXME: Use generic show in another unit. */
+  putchar('\n');
   printf("FROM %04X TO %04X:\n", src, dst);
   hex_dump(payload, payload_size);
   printf("RX STATUS: %s (%d)\n", loramac_send2str(status), status);
@@ -64,7 +65,7 @@ static void start(const struct context *ctx)
   char buf[BUF_SIZE];
 
   while(1) {
-    printf("input> ");
+    printf(PROMPT);
 
     /* Interruption often occurs on stdin because
        we use the timers a lot. So we *have* to
