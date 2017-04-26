@@ -197,8 +197,8 @@ static void print_help(const char *name, const char *mode_name,
     { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
     { 'b', "no-broadcast",    "Ignore broadcast messages" },
     { 'a', "no-ack",          "Do not answer nor expect ACKs" },
-    { 't', "timeout",         "ACK timeout in microseconds (default 2 seconds)" },
-    { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 500 ms)" },
+    { 't', "timeout",         "ACK timeout in microseconds (default 4s)" },
+    { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 2s)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)"},
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
@@ -244,8 +244,8 @@ int main(int argc, char *argv[])
     .ntohs       = ntohs,
     .recv_frame  = loramac_recv_frame,
     .retrans     = 3,
-    .timeout     = 2000000,     /* 2 s */
-    .sifs        = 500000,      /* 500 ms */
+    .timeout     = 4000000, /* 4 seconds */
+    .sifs        = 2000000, /* 2 seconds */
     .flags       = 0,
     .data        = &ctx
   };
