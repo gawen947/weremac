@@ -217,7 +217,7 @@ static void print_help(const char *name, const char *mode_name,
   help(name, "[OPTIONS] source device", common_messages);
 
   if(extra_messages) {
-    fprintf(stderr, "\nEx tra options for %s mode:\n", mode_name);
+    fprintf(stderr, "\nExtra options for %s mode:\n", mode_name);
     help(name, NULL, extra_messages);
   }
 }
