@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <err.h>
 
+#include "loramac-str.h"
 #include "loramac.h"
 #include "help.h"
 #include "main.h"
@@ -46,8 +47,9 @@ static void cb_recv(uint16_t src, uint16_t dst,
   UNUSED(data);
 
   /* FIXME: Use generic show in another unit. */
-  printf("%04X->%04X (status: %d):\n", src, dst, status);
+  printf("FROM %04X TO %04X:\n", src, dst);
   hex_dump(payload, payload_size);
+  printf("RX STATUS: %s (%d)\n", loramac_send2str(status), status);
 }
 
 static void init(const struct context  *ctx, struct loramac_config *loramac)
@@ -58,6 +60,7 @@ static void init(const struct context  *ctx, struct loramac_config *loramac)
 
 static void start(const struct context *ctx)
 {
+  int ret;
   char buf[BUF_SIZE];
 
   while(1) {
@@ -81,7 +84,8 @@ static void start(const struct context *ctx)
     else if(!strcmp(buf, "exit"))
       return;
 
-    loramac_send(ctx->dst_mac, buf, strlen(buf));
+    ret = loramac_send(ctx->dst_mac, buf, strlen(buf));
+    printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
   }
 }
 
