@@ -151,6 +151,16 @@ static void start_io_threads(const struct context *ctx,
 
 }
 
+/* Just to avoid a warning and void casting,
+   since most malloc() take a size_t in argument
+   but the independent driver only knows about
+   unsigned long. */
+static void * UL_malloc(unsigned long size)
+{
+  return malloc(size);
+}
+
+/* Display a summary of the MAC layer configuration. */
 static void display_summary(const struct iface_mode *mode,
                             const struct loramac_config *conf,
                             const struct context *ctx,
@@ -239,7 +249,7 @@ int main(int argc, char *argv[])
     .wait_timer  = wait_timer,
     .lock        = lock,
     .unlock      = unlock,
-    .malloc      = malloc,
+    .malloc      = UL_malloc,
     .htons       = htons,
     .ntohs       = ntohs,
     .recv_frame  = loramac_recv_frame,
