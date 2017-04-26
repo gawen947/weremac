@@ -62,6 +62,7 @@ static void init(const struct context  *ctx, struct loramac_config *loramac)
 static void start(const struct context *ctx)
 {
   int ret;
+  unsigned int tx;
   char buf[BUF_SIZE];
 
   while(1) {
@@ -88,8 +89,9 @@ static void start(const struct context *ctx)
     else if(!strcmp(buf, "exit"))
       return;
 
-    ret = loramac_send(ctx->dst_mac, buf, strlen(buf));
+    ret = loramac_send(ctx->dst_mac, buf, strlen(buf), &tx);
     printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
+    printf("TX COUNT : %d\n", tx);
   }
 }
 
