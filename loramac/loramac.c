@@ -210,7 +210,7 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size, u
   {
     seqno++; /* Use same sequence number for retransmitted frames. */
 
-    for(retransmission = 1 ; retransmission <= mac_conf.retrans ; retransmission++) {
+    for(retransmission = 1 ; retransmission < mac_conf.retrans ; retransmission++) {
       ret = loramac_send_helper(dst, payload, payload_size);
 
       if(ret == LORAMAC_SND_SUCCESS)
