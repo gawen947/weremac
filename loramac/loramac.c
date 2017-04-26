@@ -54,8 +54,8 @@ static int oldest; /* index of oldest element in FIFO */
 static int newest; /* index of newest element in FIFO */
 static int ack_fifo_size; /* size of the FIFO */
 static struct last_ack {
-  uint16_t sender;
-  uint8_t  seqno;
+  uint16_t sender : 16;
+  uint8_t  seqno  : 8;
 } *ack_fifo;
 
 /* Search the ACK FIFO for a sender.

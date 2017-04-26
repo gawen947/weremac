@@ -8,13 +8,14 @@ SRC = $(wildcard *.c)
 OBJ = $(foreach obj, $(SRC:.c=.o), $(notdir $(obj)))
 DEP = $(SRC:.c=.d)
 
-TARGETS = loramac-stdio
+TARGETS = loramac-stdio loramac-send
 
 COMMON_OBJ = string-utils.o rpi-gpio.o timer.o uart.o lock.o \
 						 common.o xatoi.o version.o safe-call.o help.o \
 						 loramac-str.o loramac.o dump.o crc-ccitt.o common.o \
 						 options.o main.c
-STDIO_OBJ  = stdio-mode.c $(COMMON_OBJ)
+STDIO_OBJ  = stdio-mode.o $(COMMON_OBJ)
+SEND_OBJ   = send-mode.o time-substract.o scale.o $(COMMON_OBJ)
 
 PREFIX ?= /usr/local
 BIN    ?= /bin
@@ -38,6 +39,9 @@ endif
 all: $(TARGETS)
 
 loramac-stdio: $(STDIO_OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+loramac-send: $(SEND_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
