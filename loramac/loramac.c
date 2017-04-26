@@ -334,18 +334,18 @@ PARSING_COMPLETED:
       send_ack(src_mac, seqno);
     }
     mac_conf.unlock();
-  }
 
-  /* check for retransmissions */
-  i = ack_fifo_search(src_mac);
-  if(i < 0)
-    ack_fifo_insert(src_mac, seqno);
-  else if(seqno == ack_fifo[i].seqno)
-    /* skip retransmission */
-    goto EXIT;
-  else
-    /* update seqno */
-    ack_fifo[i].seqno = seqno;
+    /* check for retransmissions */
+    i = ack_fifo_search(src_mac);
+    if(i < 0)
+      ack_fifo_insert(src_mac, seqno);
+    else if(seqno == ack_fifo[i].seqno)
+      /* skip retransmission */
+      goto EXIT;
+    else
+      /* update seqno */
+      ack_fifo[i].seqno = seqno;
+  }
 
   /* send frame to upper layer */
   mac_conf.cb_recv(src_mac, dst_mac,
