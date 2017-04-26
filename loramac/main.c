@@ -368,6 +368,8 @@ int main(int argc, char *argv[])
       loramac.retrans = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
+      if(loramac.retrans < 1)
+        errx(EXIT_FAILURE, "invalid number of retransmissions");
       break;
     case 'B':
       speed_str = strdup(optarg);
