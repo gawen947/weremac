@@ -22,10 +22,13 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <getopt.h>
+#include <errno.h>
+#include <err.h>
 
 #include "loramac.h"
 #include "help.h"
@@ -59,7 +62,19 @@ static void start(const struct context *ctx)
 
   while(1) {
     printf("input> ");
-    fgets(buf, sizeof(buf), stdin);
+
+    /* Interruption often occurs on stdin because
+       we use the timers a lot. So we *have* to
+       handle syscall interruptions. */
+  RESTART:
+    if(!fgets(buf, sizeof(buf), stdin)) {
+      switch(errno) {
+      case EINTR:
+        goto RESTART;
+      default:
+        errx(EXIT_FAILURE, "cannot read from stdin");
+      }
+    }
 
     if(!strcmp(buf, "quit"))
       return;
