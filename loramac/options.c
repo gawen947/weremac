@@ -43,7 +43,7 @@ struct option * merge_opts(const struct option *a, const struct option *b)
 {
   int len_a = opts_len(a);
   int len_b = opts_len(b);
-  int len   = MAX(len_a, len_b); /* len without terminal zero struct */
+  int len   = len_a + len_b; /* len without terminal zero struct */
 
   /* allocate memory for the merged array
      here we take into account the terminal
