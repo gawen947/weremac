@@ -111,7 +111,7 @@ static void * output_thread_func(void *p)
 
   data->mode->start(data->ctx);
 
-  return NULL; /* FIXME: should return correctly */
+  return NULL; /* FIXME: return with error code */
 }
 
 static void * input_thread_func(void *p)
@@ -122,8 +122,7 @@ static void * input_thread_func(void *p)
 
   uart_read_loop();
 
-  /* FIXME: should return correctly */
-  return NULL;
+  return NULL; /* FIXME: return with error code */
 }
 
 static void start_io_threads(const struct context *ctx,
@@ -145,10 +144,7 @@ static void start_io_threads(const struct context *ctx,
   if(err)
     errx(EXIT_FAILURE, "cannot create threads");
 
-  /* FIXME: read return value */
   pthread_join(output_thread, NULL);
-  pthread_join(input_thread, NULL);
-
 }
 
 /* Just to avoid a warning and void casting,

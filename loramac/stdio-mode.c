@@ -80,6 +80,9 @@ static void start(const struct context *ctx)
       }
     }
 
+    /* strip newline */
+    strtok(buf, "\n");
+
     if(!strcmp(buf, "quit"))
       return;
     else if(!strcmp(buf, "exit"))
