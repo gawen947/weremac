@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       5
+#define LORAMAC_MINOR       6
 
 /* We limit the frame size to 63 bytes. After reading the code
    on the LoRaMAC module, a larger frame would result in a buffer
@@ -156,8 +156,10 @@ int loramac_init(const struct loramac_config *conf);
 /* Assemble and send a frame to the specified destination using LoRaMAC.
    The broadcast address is 0xffff. When ACK is enabled, this function
    will block until the packet has been successfully transmitted. For
-   the error returned see loramac_send_status. */
-int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size);
+   the error returned see loramac_send_status. If the tx pointer is not
+   null, it is replaced with the number of transmissions necessary to
+   succesfully send the packet. */
+int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx);
 
 /* Start the processing of a frame. Can be called either automatically
    when a complete frame has been received or manually from another thread. */

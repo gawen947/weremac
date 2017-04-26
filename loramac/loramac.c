@@ -198,10 +198,10 @@ static int loramac_send_helper(uint16_t dst, const void *payload, unsigned int p
   return LORAMAC_SND_SUCCESS;
 }
 
-int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
+int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx)
 {
   int ret = LORAMAC_SND_NOACK;
-  int retransmission;
+  unsigned int retransmission;
 
   /* We lock the packet buffer when sending a packet.
      This will lock for the complete transmission
@@ -210,7 +210,7 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
   {
     seqno++; /* Use same sequence number for retransmitted frames. */
 
-    for(retransmission = mac_conf.retrans ; retransmission ; retransmission--) {
+    for(retransmission = 0 ; retransmission <= mac_conf.retrans ; retransmission++) {
       ret = loramac_send_helper(dst, payload, payload_size);
 
       if(ret == LORAMAC_SND_SUCCESS)
@@ -218,6 +218,9 @@ int loramac_send(uint16_t dst, const void *payload, unsigned int payload_size)
     }
   }
   mac_conf.unlock();
+
+  if(tx)
+    *tx = retransmission;
 
   return ret;
 }
