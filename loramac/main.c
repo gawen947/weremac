@@ -239,6 +239,7 @@ int main(int argc, char *argv[])
     .wait_timer  = wait_timer,
     .lock        = lock,
     .unlock      = unlock,
+    .malloc      = malloc,
     .htons       = htons,
     .ntohs       = ntohs,
     .recv_frame  = loramac_recv_frame,

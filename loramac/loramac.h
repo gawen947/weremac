@@ -125,7 +125,7 @@ struct loramac_config {
 
   /* When ACK are used, the driver needs to allocate an array
      for a FIFO which depends on the timeout and SIFS values. */
-  void * (*malloc)(unsigned int size);
+  void * (*malloc)(unsigned long size);
 
   /* Not all platform provide byte ordering functions
      with the same names as POSIX. */
