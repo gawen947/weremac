@@ -76,6 +76,7 @@ static void start(const struct context *ctx)
 
   nsec = substract_nsec(&begin, &end);
 
+  putchar('\n');
   if(display_time)
     printf("TIME     : %s", scale_time(nsec));
   printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
