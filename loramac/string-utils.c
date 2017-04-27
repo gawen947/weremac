@@ -95,3 +95,10 @@ char * strcat_dup(const char *a, const char *b)
   return concat;
 }
 
+void xstrcpy(char *dst, const char *src, size_t count)
+{
+  if(strlen(src) > count)
+    err(EXIT_FAILURE, "strcpy(%zu)", count);
+  strcpy(dst, src);
+}
+

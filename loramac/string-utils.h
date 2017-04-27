@@ -45,4 +45,7 @@ void * memdup(const void *buf, size_t size);
    enough to contain the two concatenated strings. */
 char * strcat_dup(const char *a, const char *b);
 
+/* Copy a string but fail if source is too large. */
+void xstrcpy(char *dst, const char *src, size_t count);
+
 #endif /* _STRING_UTILS_H_ */
