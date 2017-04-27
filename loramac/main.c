@@ -198,11 +198,11 @@ static void print_help(const char *name, const char *mode_name,
                        struct opt_help *extra_messages)
 {
   struct opt_help common_messages[] = {
-    { 'h', "help",          "Show this help message" },
-    { 'V', "version",       "Show version information" },
-    { 'v', "verbose",       "Enable verbose mode" },
+    { 'h', "help",            "Show this help message" },
+    { 'V', "version",         "Show version information" },
+    { 'v', "verbose",         "Enable verbose mode" },
 #ifdef COMMIT
-    { 0, "commit",          "Display commit information" }
+    { 0,   "commit",          "Display commit information" }
 #endif /* COMMIT */
     { 'p', "destination",     "Do not filter packets to another destination" },
     { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
@@ -210,8 +210,9 @@ static void print_help(const char *name, const char *mode_name,
     { 'a', "no-ack",          "Do not answer nor expect ACKs" },
     { 't', "timeout",         "ACK timeout in microseconds (default 4s)" },
     { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 2s)" },
+    { 'S', "seqno",           "Initial sequence number (default: random)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
-    { 'B', "baud",            "Specify the baud rate (default 9600)"},
+    { 'B', "baud",            "Specify the baud rate (default 9600)" },
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
     { 0,   "irq",             "IRQ RPi GPIO" },
     { 0,   "cts",             "CTS RPi GPIO" },
@@ -264,6 +265,7 @@ int main(int argc, char *argv[])
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
   int err;
+  unsigned long val;
 
   enum opt {
     OPT_COMMIT = 0x100,
@@ -289,6 +291,7 @@ int main(int argc, char *argv[])
 
     { "timeout", required_argument, NULL, 't' },
     { "sifs", required_argument, NULL, 's' },
+    { "seqno", required_argument, NULL, 'S' },
     { "retransmissions", required_argument, NULL, 'r' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
@@ -304,7 +307,7 @@ int main(int argc, char *argv[])
      structure are merged from both
      the common options and the mode
      (stdio, ping, ...) options. */
-  char * optstring_merged    = strcat_dup("hVvpibat:s:r:B:d:", iface_mode.optstring);
+  char * optstring_merged    = strcat_dup("hVvpibat:s:S:r:B:d:", iface_mode.optstring);
   struct option *opts_merged = merge_opts(common_opts, iface_mode.long_opts);
 
   prog_name = basename(argv[0]);
@@ -370,6 +373,13 @@ int main(int argc, char *argv[])
       if(err)
         errx(EXIT_FAILURE, "cannot parse SIFS value");
       break;
+    case 'S':
+      val = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse sequence number");
+      else if(val > 0xff)
+        errx(EXIT_FAILURE, "sequence number too large");
+      loramac.seqno = val;
     case 'r':
       loramac.retrans = xatou(optarg, &err);
       if(err)
