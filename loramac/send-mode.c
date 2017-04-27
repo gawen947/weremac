@@ -47,6 +47,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
                     int status, void *data)
 {
+  /* This mode only sends so we ignored received frames. */
   UNUSED(src);
   UNUSED(dst);
   UNUSED(payload);
