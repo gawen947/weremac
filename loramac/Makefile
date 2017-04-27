@@ -8,7 +8,7 @@ SRC = $(wildcard *.c)
 OBJ = $(foreach obj, $(SRC:.c=.o), $(notdir $(obj)))
 DEP = $(SRC:.c=.d)
 
-TARGETS = loramac-stdio loramac-send
+TARGETS = loramac-stdio loramac-send loramac-unix
 
 COMMON_OBJ = string-utils.o rpi-gpio.o timer.o uart.o lock.o \
 						 common.o xatoi.o version.o safe-call.o help.o \
@@ -16,6 +16,7 @@ COMMON_OBJ = string-utils.o rpi-gpio.o timer.o uart.o lock.o \
 						 options.o main.c
 STDIO_OBJ  = stdio-mode.o $(COMMON_OBJ)
 SEND_OBJ   = send-mode.o time-substract.o scale.o $(COMMON_OBJ)
+UNIX_OBJ   = unix-mode.o $(COMMON_OBJ)
 
 PREFIX ?= /usr/local
 BIN    ?= /bin
@@ -44,6 +45,9 @@ loramac-stdio: $(STDIO_OBJ)
 loramac-send: $(SEND_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+loramac-unix: $(UNIX_OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 %.o: %.c
 	$(CC) -Wp,-MMD,$*.d -c $(CFLAGS) -o $@ $<
 
@@ -56,6 +60,8 @@ clean:
 install:
 	$(MKDIR) -p $(DESTDIR)/$(PREFIX)/$(BIN)
 	$(INSTALL_BIN) loramac-stdio $(DESTDIR)/$(PREFIX)/$(BIN)
+	$(INSTALL_BIN) loramac-send $(DESTDIR)/$(PREFIX)/$(BIN)
+	$(INSTALL_BIN) loramac-unix $(DESTDIR)/$(PREFIX)/$(BIN)
 
 uninstall:
 	$(RM) $(DESTDIR)/$(PREFIX)/$(BIN)/$(TARGET)
