@@ -39,7 +39,7 @@
 #include "mode.h"
 
 #define PROMPT   "input> "
-#define BUF_SIZE 0x80
+#define BUF_SIZE LORAMAC_MAX_PAYLOAD
 
 static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
