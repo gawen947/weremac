@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #define LORAMAC_MAJOR       3
-#define LORAMAC_MINOR       6
+#define LORAMAC_MINOR       7
 
 /* We limit the frame size to 63 bytes. After reading the code
    on the LoRaMAC module, a larger frame would result in a buffer
@@ -43,7 +43,8 @@
 #define LORAMAC_MAX_PAYLOAD LORAMAC_MAX_FRAME - LORAMAC_HDR_SIZE
 
 /* Maximum size for the receiver ACK FIFO.
-   That is the number of different senders that can
+   We use the ACK FIFO to filter duplicated retransmissions.
+   This is the number of different senders that can
    send a frame to the receiver during one timeout. */
 #define LORAMAC_MAX_ACK_FIFO 32
 
@@ -140,6 +141,13 @@ struct loramac_config {
      be loramac_recv_frame() or use semaphores to defer
      outside of the interrupt context. */
   int (*recv_frame)(void);
+
+  /* Initial sequence number.
+     This can be randomized so that multiple instances
+     of the same host (i.e. same source address) with
+     ACK enabled do not result in frames being filtered
+     as retransmissions by the receiver (see ACK FIFO). */
+  uint8_t seqno;
 
   uint16_t mac_address;  /* device short MAC address */
   unsigned int  retrans; /* maximum number of retransmissions */

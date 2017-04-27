@@ -94,6 +94,7 @@ int loramac_init(const struct loramac_config *conf)
   int i;
 
   mac_conf = *conf;
+  seqno    = mac_conf.seqno;
 
   /* SIFS is the time until the receiver can send its ACK.
      So if timeout is lower than this value, ACKs will never

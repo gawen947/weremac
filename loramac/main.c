@@ -147,6 +147,11 @@ static void start_io_threads(const struct context *ctx,
   pthread_join(output_thread, NULL);
 }
 
+static uint8_t rnd_seqno(void)
+{
+  return arc4random_uniform(0xff);
+}
+
 /* Just to avoid a warning and void casting,
    since most malloc() take a size_t in argument
    but the independent driver only knows about
@@ -249,6 +254,7 @@ int main(int argc, char *argv[])
     .htons       = htons,
     .ntohs       = ntohs,
     .recv_frame  = loramac_recv_frame,
+    .seqno       = rnd_seqno(),
     .retrans     = 3,
     .timeout     = 4000000, /* 4 seconds */
     .sifs        = 2000000, /* 2 seconds */
