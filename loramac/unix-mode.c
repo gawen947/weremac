@@ -41,6 +41,14 @@
 #include "main.h"
 #include "help.h"
 
+/*
+  The Unix mode read and write frames from/to a DGRAM UNIX socket.
+  Send are not blocked and there is no confirmation for
+  successful transmission. The message format for incoming
+  and outgoing messages is specified below (see cb_recv() and
+  start()).
+*/
+
 #define BUF_SIZE LORAMAC_MAX_FRAME
 
 static int sd;
