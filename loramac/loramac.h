@@ -158,7 +158,8 @@ struct loramac_config {
   void *data; /* context data passed to user callbacks */
 };
 
-/* Initialize the LoRaMAC driver (see loramac_config) */
+/* Initialize the LoRaMAC driver (see loramac_config).
+   Return 0 on success, for other error codes see loramac_init_status. */
 int loramac_init(const struct loramac_config *conf);
 
 /* Assemble and send a frame to the specified destination using LoRaMAC.
