@@ -23,6 +23,8 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
+
 #include "crc-ccitt.h"
 
 static const uint16_t crc_ccitt_tbl[] = {
