@@ -36,7 +36,7 @@
    The actual iface_mode used is declared
    in the mode unit linked with the common
    code. */
-struct iface_mode {
+extern struct iface_mode {
   const char *name;
   const char *description;
 
