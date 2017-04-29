@@ -22,6 +22,10 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef __linux__
+# include <bsd/stdlib.h>
+#endif /* __linux__ */
+
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <unistd.h>

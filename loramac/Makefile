@@ -21,7 +21,10 @@ UNIX_OBJ   = unix-mode.o $(COMMON_OBJ)
 PREFIX ?= /usr/local
 BIN    ?= /bin
 
-CFLAGS += -D_BSD_SOURCE=1
+ifeq ($(OS),Linux)
+	CFLAGS  += -D_BSD_SOURCE=1
+	LDFLAGS := -lbsd
+endif
 
 commit = $(shell ./hash.sh)
 ifneq ($(commit), UNKNOWN)
