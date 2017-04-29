@@ -24,8 +24,8 @@
  */
 
 /* This is the platform independent part of our G3-PLC driver
-   It does not have any code dependent on a specific platform
-   (such as S7G2, RPi or Linux), it's just pure C. */
+   It does not have code dependent on a specific platform
+   (such as S7G2, RPi or Linux), it's just standard ISO C. */
 
 #ifndef _G3PLC_H_
 #define _G3PLC_H_
@@ -33,9 +33,13 @@
 #include <stdint.h>
 
 #include "g3plc-cmd.h"
+#include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2
 #define G3PLC_MINOR 1
+
+#define G3PLC_DATA_HDR_SIZE 28 /* see G3-PLC Serial Command Spec. p51 */
+#define G3PLC_MAX_PAYLOAD   G3PLC_MAX_CMD - G3PLC_DATA_HDR_SIZE - sizeof(struct g3plc_cmd)
 
 enum g3plc_flags {
   G3PLC_INVALID = 0x1, /* do not filter invalid packets (packet header, CRC) */
@@ -140,5 +144,7 @@ int g3plc_recv_frame(void);
    can call it again. */
 int g3plc_uart_putc(unsigned char c);
 
+/* Reset the modem. */
+int g3plc_reset(void);
 
 #endif /* _G3PLC_H_ */

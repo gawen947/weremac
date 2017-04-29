@@ -23,6 +23,8 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include "cmdbuf.h"
 #include "pack.h"
 #include "g3plc-cmd.h"
@@ -58,7 +60,57 @@ int g3plc_command(struct g3plc_cmd *cmd, unsigned int size)
 
 int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx)
 {
-  
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_UMAC,
+    .cmd      = G3PLC_CMD_MCPS_DATA
+  };
+
+  /* check payload length */
+  if(payload_size > G3PLC_MAX_PAYLOAD)
+    return G3PLC_SND_TOOLONG;
+
+  /* assemble frame */
+  *(uint8_t *)dat = 0x02; dat += sizeof(uint8_t); /* src addr type (16-bit short addr) */
+  *(uint8_t *)dat = 0x02; dat += sizeof(uint8_t); /* dst addr type (16-bit short addr) */
+
+  /* destination PAN ID */
+  *(uint16_t *)dat = g3plc_conf.htons(g3plc_conf.pan_id);
+  dat += sizeof(uint16_t);
+
+  /* destination address */
+  memset(dat, 0, 8 - sizeof(uint16_t));     dat += 8 - sizeof(uint16_t);
+  *(uint16_t *)dat = g3plc_conf.htons(dst); dat += sizeof(uint16_t);
+
+  /* MSDU length */
+  *(uint16_t *)dat = g3plc_conf.htons(payload_size);
+  dat += sizeof(uint16_t);
+
+  *(uint8_t *)dat = 0x00; dat += sizeof(uint8_t); /* MSDU handle */
+
+  /* TX options */
+  *(uint8_t *)dat = g3plc_conf.flags & G3PLC_NOACK ? 0x00 : 0x01;
+  dat += sizeof(uint8_t);
+
+  /* security level
+     key identification mode
+     key source
+     key index
+     QoS */
+  memset(dat, 0, 12); dat += 12;
+
+  /* copy payload */
+  memcpy(dat, payload, payload_size);
+  dat += payload_size;
+
+  /* send command to device */
+  return g3plc_command(cmd, dat - snd_cmdbuf);
 }
 
 int g3plc_recv_frame(void)
