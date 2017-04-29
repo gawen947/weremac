@@ -26,6 +26,8 @@
 #ifndef _G3PLC_CMD_H_
 #define _G3PLC_CMD_H_
 
+#include <stdint.h>
+
 /* see G3-PLC Serial Command Spec. p29 */
 struct g3plc_cmd {
   unsigned int reserved : 8; /* reserved byte */
@@ -225,6 +227,60 @@ enum g3plc_attr {
   G3PLC_ATTR_SHORTADDR = 0x0053, /* short address */
 };
 
+/* Convert a command structure into a literal.
+   This is useful for defining common command as literals
+   that we can use in switch cases such as the dissector. */
+#define LITERAL_G3PLC_CMD(cmd)                  \
+  (union {                                      \
+    uint32_t         u32;                       \
+    struct g3plc_cmd c;                         \
+  }){ .c = cmd }.u32
+#define INLINE_G3PLC_CMD(reserved, type, idc, ida, idp, cmd) \
+  LITERAL_G3PLC_CMD( ((struct g3plc_cmd){ reserved, type, idc, ida, idp, cmd }) )
+
+/* Common commands defined as literals for switch cases. */
+#define G3PLC_G3_INIT_CONFIRM INLINE_G3PLC_CMD(0,                 \
+                                               G3PLC_TYPE_G3,     \
+                                               G3PLC_CHAN0,       \
+                                               G3PLC_IDA_CONFIRM, \
+                                               G3PLC_IDP_G3CTR,   \
+                                               G3PLC_CMD_G3_INIT)
+#define G3PLC_G3_SETCONFIG_CONFIRM INLINE_G3PLC_CMD(0,                      \
+                                                    G3PLC_TYPE_G3,          \
+                                                    G3PLC_CHAN0,            \
+                                                    G3PLC_IDA_CONFIRM,      \
+                                                    G3PLC_IDP_G3CTR,        \
+                                                    G3PLC_CMD_G3_SETCONFIG)
+#define G3PLC_MLME_START_CONFIRM INLINE_G3PLC_CMD(0,                      \
+                                                  G3PLC_TYPE_G3,          \
+                                                  G3PLC_CHAN0,            \
+                                                  G3PLC_IDA_CONFIRM,      \
+                                                  G3PLC_IDP_UMAC,         \
+                                                  G3PLC_CMD_MLME_START)
+#define G3PLC_MLME_SET_CONFIRM INLINE_G3PLC_CMD(0,                      \
+                                                G3PLC_TYPE_G3,          \
+                                                G3PLC_CHAN0,            \
+                                                G3PLC_IDA_CONFIRM,      \
+                                                G3PLC_IDP_UMAC,         \
+                                                G3PLC_CMD_MLME_SET)
+#define G3PLC_MLME_RESET_CONFIRM INLINE_G3PLC_CMD(0,                      \
+                                                  G3PLC_TYPE_G3,          \
+                                                  G3PLC_CHAN0,            \
+                                                  G3PLC_IDA_CONFIRM,      \
+                                                  G3PLC_IDP_UMAC,         \
+                                                  G3PLC_CMD_MLME_RESET)
+#define G3PLC_MCPS_DATA_CONFIRM INLINE_G3PLC_CMD(0,                      \
+                                                 G3PLC_TYPE_G3,          \
+                                                 G3PLC_CHAN0,            \
+                                                 G3PLC_IDA_CONFIRM,      \
+                                                 G3PLC_IDP_UMAC,         \
+                                                 G3PLC_CMD_MCPS_DATA)
+#define G3PLC_MCPS_DATA_INDICATION INLINE_G3PLC_CMD(0,                    \
+                                                    G3PLC_TYPE_G3,        \
+                                                    G3PLC_CHAN0,          \
+                                                    G3PLC_IDA_INDICATION, \
+                                                    G3PLC_IDP_UMAC,       \
+                                                    G3PLC_CMD_MCPS_DATA)
 
 /* G3 PLC command packets are represented with a bitfield structure.
    However the fields order is not defined in standard C, only its size.

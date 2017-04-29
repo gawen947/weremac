@@ -170,7 +170,7 @@ static int mlme_start_request(uint8_t pan /* PAN ID */ )
     .idc      = G3PLC_CHAN0,
     .ida      = G3PLC_IDA_REQUEST,
     .idp      = G3PLC_IDP_UMAC,
-    .cmd      = G3PLC_CMD_MLME_RESET
+    .cmd      = G3PLC_CMD_MLME_START
   };
 
   *(uint16_t *)dat = g3plc_conf.htons(pan); dat += sizeof(uint16_t);
