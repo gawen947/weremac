@@ -23,8 +23,8 @@
  */
 
 /* This is the platform independent part of our LoRaMAC driver
-   It does not have any code dependent on a specific platform
-   (such as S7G2, RPi or Linux), it's just pure C. */
+   It does not have code dependent on a specific platform
+   (such as S7G2, RPi or Linux), it's just standard ISO C. */
 
 #include <stdlib.h>
 #include <string.h>
