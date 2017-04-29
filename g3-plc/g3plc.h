@@ -47,12 +47,20 @@ enum g3plc_init_status {
   G3PLC_INIT_SUCCESS,
 };
 
-/* Status of a received frame */
+/* Status of a received frame/command */
 enum g3plc_receive_status {
   G3PLC_RCV_SUCCESS,
   G3PLC_RCV_CONT,        /* no frame were parsed (need more data) */
   G3PLC_RCV_INVALID_CRC, /* CRC does not match received command */
-  G3PLC_RCV_INVALID_HDR, /* invalid header (too short) */
+  G3PLC_RCV_INVALID_HDR, /* invalid command header (too short) */
+};
+
+/* Status of a sent frame/command */
+enum g3plc_send_status {
+  G3PLC_SND_SUCCESS,
+  G3PLC_SND_INVALID_HDR, /* invalid command header (too short) */
+  G3PLC_SND_TOOLONG,     /* payload too long */
+  G3PLC_SND_NOACK,       /* maximum number of retransmissions reached */
 };
 
 struct g3plc_config {
@@ -104,9 +112,14 @@ struct g3plc_config {
   void *data; /* context data passed to user callbacks */
 };
 
-/* Initialize the LoRaMAC driver (see loramac_config).
+/* Initialize the G3PLC driver (see g3plc_config).
    Return 0 on success, for other errror codes see g3plc_init_status. */
 int g3plc_init(const struct g3plc_config *conf);
+
+/* Send a command to the G3PLC device.
+   The command before must be four bytes longer than actually announced
+   since the function will append a CRC to the supplied buffer. */
+int g3plc_command(struct g3plc_cmd *cmd, unsigned int size);
 
 /* Assemble and send a frame to the specified destination using G3PLC.
    When ACK is enabled, this function will block until the packet has

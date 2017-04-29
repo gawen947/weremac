@@ -45,6 +45,22 @@ int g3plc_init(const struct g3plc_config *conf)
   return G3PLC_INIT_SUCCESS;
 }
 
+int g3plc_command(struct g3plc_cmd *cmd, unsigned int size)
+{
+  if(size < sizeof(struct g3plc_cmd))
+    return G3PLC_SND_INVALID_HDR;
+
+  hton_g3plc_cmd(cmd);                                        /* network order */
+  append_crc(&g3plc_conf, (unsigned char *)cmd, &size);       /* apply CRC */
+  size = pack(snd_cmdbuf_packed, (unsigned char *)cmd, size); /* HDLC */
+  return g3plc_conf.uart_send(snd_cmdbuf_packed, size);       /* send command */
+}
+
+int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx)
+{
+  
+}
+
 int g3plc_recv_frame(void)
 {
   struct g3plc_cmd *cmd = (struct g3plc_cmd *)rcv_cmdbuf;
@@ -63,6 +79,9 @@ int g3plc_recv_frame(void)
     status = G3PLC_RCV_INVALID_CRC;
     goto PARSING_COMPLETE;
   }
+
+  /* convert command to host order */
+  ntoh_g3plc_cmd(cmd);
 
 PARSING_COMPLETE:
   /* based on parsing status and iface_flags
