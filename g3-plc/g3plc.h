@@ -83,7 +83,19 @@ struct g3plc_config {
      the resulting frame on the device's UART. This
      functions should return a negative value in case of
      error or 0 on success. */
-  int  (*uart_send)(const void *buf, unsigned int size);
+  int (*uart_send)(const void *buf, unsigned int size);
+
+  int (*uart_read)()
+  
+  /* Change UART speed.
+     This take an integer (not a speed_t type).
+     It should handle the following speed:
+       - 1M
+       - 500k
+       - 115.2k
+     and return a negative number on error. */
+  int (*set_uart_speed)(unsigned int speed);
+
 
   /* The function g3plc_uart_putc() is generally called
      from an interrupt handler. Since we cannot parse

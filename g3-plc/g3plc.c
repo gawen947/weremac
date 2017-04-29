@@ -193,3 +193,8 @@ int g3plc_uart_putc(unsigned char c)
       return G3PLC_RCV_CONT;
   }
 }
+
+int g3plc_reset(void)
+{
+  g3plc_conf.set_uart_speed(115200);
+}

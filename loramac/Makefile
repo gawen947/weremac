@@ -23,7 +23,7 @@ BIN    ?= /bin
 
 ifeq ($(OS),Linux)
 	CFLAGS  += -D_BSD_SOURCE=1
-	LDFLAGS := -lbsd
+	LDFLAGS += -lbsd
 endif
 
 commit = $(shell ./hash.sh)
