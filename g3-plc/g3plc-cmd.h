@@ -211,6 +211,21 @@ enum g3plc_status {
   G3PLC_EAP_IF_NO_RESPONSE        = 0xa3,
 };
 
+/* Band plan */
+enum g3plc_bandplan {
+  G3PLC_BP_CENELEC_A,
+  G3PLC_BP_CENELEC_B,
+  G3PLC_BP_ARIB,
+  G3PLC_BP_FCC
+};
+
+/* IB attributes */
+enum g3plc_attr {
+  G3PLC_ATTR_PANID     = 0x0050, /* PAN ID */
+  G3PLC_ATTR_SHORTADDR = 0x0053, /* short address */
+};
+
+
 /* G3 PLC command packets are represented with a bitfield structure.
    However the fields order is not defined in standard C, only its size.
    So we need two functions to convert the host command bitfield to/from

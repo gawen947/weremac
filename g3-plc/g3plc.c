@@ -25,12 +25,25 @@
 
 #include <string.h>
 
+#include "firmware.h"
 #include "cmdbuf.h"
 #include "pack.h"
 #include "g3plc-cmd.h"
 #include "g3plc.h"
 
+/* Maximum size of write during boot sequence segment upload. */
+#define BOOT_SEGMENT_CHUNK 8092
+
+/* Check that callbacks are configured before calling them. */
 #define CB(cb, ...) if(g3plc_conf.callbacks.cb) g3plc_conf.callbacks.cb(__VA_ARGS__)
+
+/* Check the return value of the function.
+   Exit with its error when it is different than success. */
+#define x_(n, fun, ...) do { \
+    n = fun(__VA_ARGS__);    \
+    if(n)                    \
+      return n;              \
+  } while(0)
 
 /* G3PLC configuration with platform dependent functions,
    source mac address, callbacks and flags. */
@@ -40,9 +53,173 @@ static struct g3plc_config g3plc_conf;
    Glue between uart_putc() and recv_frame(). */
 static unsigned int rcv_size;
 
+static uint64_t htonll(uint64_t v)
+{
+  return ((uint64_t)g3plc_conf.htonl(v & 0xffffffff) << 32) | g3plc_conf.htonl(v >> 32);
+}
+
+static int g3_init_request(uint16_t neighbour,  /* number of neighbour table */
+                           uint16_t device,     /* number of device table */
+                           uint16_t pan         /* max. number of PAN obtained with a scan */ )
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_G3CTR,
+    .cmd      = G3PLC_CMD_G3_INIT
+  };
+
+  /* check values */
+  if(neighbour > 1536)
+    return G3PLC_SND_INVALID_PARAM;
+  if(device > 1536)
+    return G3PLC_SND_INVALID_PARAM;
+  if(pan < 1 || pan > 128)
+    return G3PLC_SND_INVALID_PARAM;
+
+  *(uint8_t  *)dat = 0x03; dat += sizeof(uint8_t); /* g3mode */
+  *(uint16_t *)dat = g3plc_conf.htons(neighbour); dat += sizeof(uint16_t);
+  *(uint16_t *)dat = g3plc_conf.htons(device);    dat += sizeof(uint16_t);
+  *(uint16_t *)dat = g3plc_conf.htons(pan);       dat += sizeof(uint16_t);
+
+  return g3plc_command(cmd, dat - snd_cmdbuf);
+}
+
+static int g3_setconfig_request(uint8_t  bandplan, /* band plan */
+                                uint64_t extaddr   /* extended address */ )
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_G3CTR,
+    .cmd      = G3PLC_CMD_G3_SETCONFIG
+  };
+
+  *(uint8_t  *)dat = 0x03;            dat += sizeof(uint8_t);  /* g3mode */
+  *(uint8_t  *)dat = bandplan;        dat += sizeof(uint8_t);
+  *(uint32_t *)dat = 0;               dat += sizeof(uint32_t); /* reserved */
+  *(uint64_t *)dat = htonll(extaddr); dat += sizeof(uint64_t);
+
+  return g3plc_command(cmd, dat - snd_cmdbuf);
+}
+
+static int mlme_reset_request(uint8_t default_pib /* reset PIB to default (1) or not (0) */ )
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_UMAC,
+    .cmd      = G3PLC_CMD_MLME_RESET
+  };
+
+  *(uint8_t *)dat = default_pib; dat += sizeof(uint8_t);
+
+  return g3plc_command(cmd, dat - snd_cmdbuf);
+}
+
+static int mlme_set_request(uint16_t attr_id,    /* PIB attribute ID */
+                            uint16_t attr_idx,   /* index within the table for PIB attribute */
+                            unsigned char *attr, /* attribute value */
+                            unsigned int size    /* attribute size */ )
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_UMAC,
+    .cmd      = G3PLC_CMD_MLME_SET
+  };
+
+  *(uint16_t  *)dat = g3plc_conf.htons(attr_id);  dat += sizeof(uint16_t);
+  *(uint16_t  *)dat = g3plc_conf.htons(attr_idx); dat += sizeof(uint16_t);
+
+  /* copy attribute value */
+  memcpy(dat, attr, size);
+  dat += size;
+
+  return g3plc_command(cmd, dat - snd_cmdbuf);
+}
+
+static int mlme_start_request(uint8_t pan /* PAN ID */ )
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char    *dat = cmd->data;
+
+  *cmd = (struct g3plc_cmd){
+    .reserved = 0,
+    .type     = G3PLC_TYPE_G3,
+    .idc      = G3PLC_CHAN0,
+    .ida      = G3PLC_IDA_REQUEST,
+    .idp      = G3PLC_IDP_UMAC,
+    .cmd      = G3PLC_CMD_MLME_RESET
+  };
+
+  *(uint16_t *)dat = g3plc_conf.htons(pan); dat += sizeof(uint16_t);
+
+  return g3plc_command(cmd, dat - snd_cmdbuf);
+}
+
 int g3plc_init(const struct g3plc_config *conf)
 {
+  int n;
+  uint16_t u16;
+
   g3plc_conf = *conf;
+
+  n = g3plc_reset();
+  if(n)
+    return n;
+
+  /* init G3-PLC */
+  x_(n, g3_init_request,
+     500 /* neighbour tables */,
+     500 /* device tables */,
+     1   /* pan in scan */ );
+
+  /* set config */
+  x_(n, g3_setconfig_request,
+     g3plc_conf.bandplan,
+     g3plc_conf.ext_address );
+
+  x_(n, mlme_reset_request, 1); /* MLME reset */
+
+  /* configure short address */
+  u16 = g3plc_conf.mac_address;
+  x_(n, mlme_set_request,
+     G3PLC_ATTR_SHORTADDR,
+     0 /* attr idx */,
+     (unsigned char *)&u16,
+     sizeof(u16));
+
+  /* configure PAN ID */
+  u16 = g3plc_conf.pan_id;
+  x_(n, mlme_set_request,
+     G3PLC_ATTR_PANID,
+     0 /* attr idx */,
+     (unsigned char *)&u16,
+     sizeof(u16));
+
+  /* start MLME */
+  x_(n, mlme_start_request, g3plc_conf.pan_id);
 
   return G3PLC_INIT_SUCCESS;
 }
@@ -194,9 +371,112 @@ int g3plc_uart_putc(unsigned char c)
   }
 }
 
-int g3plc_reset(void)
+/* Send a single byte through UART.
+   We use this during the boot sequence to signal the device. */
+#define xsend_byte(n, c) x_(n, send_byte, c)
+static int send_byte(unsigned char c)
 {
-  g3plc_conf.set_uart_speed(115200);
+  return g3plc_conf.uart_send(&c, 1);
+}
+
+/* Wait for the reception of a specific character before continuation.
+   We use this during the boot sequence to wait for signals from the device. */
+#define xwait_for_byte(n, c) x_(n, wait_for_byte, c)
+static int wait_for_byte(unsigned char c)
+{
+  unsigned char buf;
+  int r = g3plc_conf.uart_read(&buf, 1);
+  if(r < 0)
+    return r;
+
+  if(buf == c)
+    return G3PLC_INIT_SUCCESS;
+  else
+    return G3PLC_INIT_BOOT_ERROR;
+}
+
+/* Send a program segment to the device. */
+#define xsend_segment(n, segno) x_(n, send_segment, segno)
+static int send_segment(unsigned int segno)
+{
+  int n;
+
+  /* FIXME: Technically we need le32toh() and htole32() here.
+     But we know that the renesas platform and Linux on RPi are LE.
+     So we are OK. */
+  const uint8_t *frmw_tbl    = cpx_firmware + 0x10;         /* firmware table */
+  const uint8_t *info_tbl    = frmw_tbl + (segno << 4);     /* info table for this segment */
+  uint32_t       offset      = *(uint32_t *)info_tbl;       /* program offset address in table */
+  uint32_t       size        = *(uint32_t *)(info_tbl + 8); /* program size */
+
+  /* send segment info table */
+  n = g3plc_conf.uart_send(info_tbl + sizeof(uint32_t), 12);
+  if(n < 0)
+    return n;
+
+  /* send segment */
+  while(size) {
+    unsigned int write_size = size > BOOT_SEGMENT_CHUNK ? BOOT_SEGMENT_CHUNK : size;
+
+    n = g3plc_conf.uart_send(frmw_tbl + offset, write_size);
+    if(n < 0)
+      return n;
+
+    size -= write_size;
+  }
 
   return 0;
+}
+
+#define xset_uart_speed(n, speed) do {  \
+  n = g3plc_conf.set_uart_speed(speed); \
+  if(n < 0)                             \
+    return n;                           \
+} while(0)
+int g3plc_reset(void)
+{
+  int n;
+
+  /* speed for segment 0 */
+  xset_uart_speed(n, 115200);
+
+  /* hardware reset */
+  g3plc_conf.reset_clear();
+  g3plc_conf.usleep(30000); /* sleep 30ms */
+  g3plc_conf.reset_set();
+
+  xwait_for_byte(n, 0x80); /* program transmission request */
+  xsend_segment(n, 0);     /* send segment 0 */
+
+  /* switch to 1M/500k baudrate */
+  xwait_for_byte(n, 0xa1);     /* baud rate change request */
+  xsend_byte(n, 0xc1);         /* baud rate change command */
+  xsend_byte(n, 0xc9);         /* baud rate (boot 1M / appl. 500k) */
+  xwait_for_byte(n, 0xcf);     /* baud rate change accept */
+  xset_uart_speed(n, 1000000); /* switch to boot baudrate */
+  xsend_byte(n, 0xaa);         /* baud rate change response */
+
+  /* send remaining segments */
+  while(1) {
+    unsigned char buf;
+    unsigned int  segno;
+
+    n = g3plc_conf.uart_read(&buf, 1);
+    if(n < 0)
+      return n;
+
+    segno = buf & 0x0f;
+
+    if(buf == 0xb0)
+      break; /* boot completion */
+    else if((buf & 0xf0) == 0x80)
+      /* program transmission request for segment segno */
+      xsend_segment(n, segno);
+    else
+      return G3PLC_INIT_BOOT_ERROR;
+  }
+
+  xset_uart_speed(n, 500000); /* switch to application baudrate */
+
+  return G3PLC_INIT_SUCCESS;
 }

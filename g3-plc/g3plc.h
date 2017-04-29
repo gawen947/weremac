@@ -49,6 +49,7 @@ enum g3plc_flags {
 /* Initialization status */
 enum g3plc_init_status {
   G3PLC_INIT_SUCCESS,
+  G3PLC_INIT_BOOT_ERROR, /* error during boot sequence */
 };
 
 /* Status of a received frame/command */
@@ -62,9 +63,10 @@ enum g3plc_receive_status {
 /* Status of a sent frame/command */
 enum g3plc_send_status {
   G3PLC_SND_SUCCESS,
-  G3PLC_SND_INVALID_HDR, /* invalid command header (too short) */
-  G3PLC_SND_TOOLONG,     /* payload too long */
-  G3PLC_SND_NOACK,       /* maximum number of retransmissions reached */
+  G3PLC_SND_INVALID_PARAM, /* invalid parameter (out of range) */
+  G3PLC_SND_INVALID_HDR,   /* invalid command header (too short) */
+  G3PLC_SND_TOOLONG,       /* payload too long */
+  G3PLC_SND_NOACK,         /* maximum number of retransmissions reached */
 };
 
 struct g3plc_config {
@@ -124,8 +126,10 @@ struct g3plc_config {
   /* Microseconds sleep. */
   void (*usleep)(unsigned long us);
 
+  uint8_t bandplan;     /* bandplan (see g3plc_bandplan) */
   uint16_t pan_id;      /* PAN ID */
   uint16_t mac_address; /* device short MAC address */
+  uint64_t ext_address; /* extended 64-bit address */
   unsigned int retrans; /* maximum number of retransmissions */
   unsigned long flags;  /* (see g3plc_flags) */
 
