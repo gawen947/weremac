@@ -81,12 +81,16 @@ struct g3plc_config {
 
   /* The driver will use the uart_send() function to write
      the resulting frame on the device's UART. This
-     functions should return a negative value in case of
+     function should return a negative value in case of
      error or 0 on success. */
   int (*uart_send)(const void *buf, unsigned int size);
 
-  int (*uart_read)()
-  
+  /* The g3plc_reset() function will use this to read
+     from the device during the boot sequence. This
+     function should return a negative value in case of
+     error or 0 on success. */
+  int (*uart_read)(void *buf, unsigned int size);
+
   /* Change UART speed.
      This take an integer (not a speed_t type).
      It should handle the following speed:

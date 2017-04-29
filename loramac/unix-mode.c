@@ -132,7 +132,7 @@ static void start(const struct context *ctx)
       continue;
     }
 
-    dst = *((uint16_t *)buf);
+    dst = *(uint16_t *)buf;
 
     IF_VERBOSE(ctx, printf("Sending %d bytes to %04X\n",
                            n - (int)sizeof(uint16_t), dst));
