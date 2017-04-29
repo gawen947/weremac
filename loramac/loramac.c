@@ -26,6 +26,7 @@
    It does not have any code dependent on a specific platform
    (such as S7G2, RPi or Linux), it's just pure C. */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "loramac.h"
@@ -112,7 +113,7 @@ int loramac_init(const struct loramac_config *conf)
   if(ack_fifo_size > LORAMAC_MAX_ACK_FIFO)
     return LORAMAC_INIT_ACK_FIFO;
 
-  ack_fifo = mac_conf.malloc(sizeof(struct last_ack) * ack_fifo_size);
+  ack_fifo = malloc(sizeof(struct last_ack) * ack_fifo_size);
   if(!ack_fifo)
     return LORAMAC_INIT_OOM;
 
