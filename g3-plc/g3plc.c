@@ -24,9 +24,19 @@
  */
 
 #include "cmdbuf.h"
+#include "pack.h"
+#include "g3plc-cmd.h"
 #include "g3plc.h"
 
+#define CB(cb, ...) if(g3plc_conf.callbacks.cb) g3plc_conf.callbacks.cb(__VA_ARGS__)
+
+/* G3PLC configuration with platform dependent functions,
+   source mac address, callbacks and flags. */
 static struct g3plc_config g3plc_conf;
+
+/* Size of the received command packet.
+   Glue between uart_putc() and recv_frame(). */
+static unsigned int rcv_size;
 
 int g3plc_init(const struct g3plc_config *conf)
 {
@@ -35,4 +45,80 @@ int g3plc_init(const struct g3plc_config *conf)
   return G3PLC_INIT_SUCCESS;
 }
 
+int g3plc_recv_frame(void)
+{
+  struct g3plc_cmd *cmd = (struct g3plc_cmd *)rcv_cmdbuf;
+  unsigned int size = unpack(rcv_cmdbuf, rcv_cmdbuf_packed, rcv_size);
+  int ret, status = G3PLC_RCV_SUCCESS;
 
+  /* check that we at least have a valid command packet */
+  if(size < (sizeof(struct g3plc_cmd) + sizeof(uint32_t))) {
+    status = G3PLC_RCV_INVALID_HDR;
+    goto PARSING_COMPLETE;
+  }
+
+  /* extract and check CRC */
+  ret = extract_crc(&g3plc_conf, rcv_cmdbuf, &size);
+  if(!ret) {
+    status = G3PLC_RCV_INVALID_CRC;
+    goto PARSING_COMPLETE;
+  }
+
+PARSING_COMPLETE:
+  /* based on parsing status and iface_flags
+     we either return directly or pass the
+     command packet to the dissectors */
+  switch(status) {
+  case G3PLC_RCV_INVALID_CRC:
+  case G3PLC_RCV_INVALID_HDR:
+    if(!(g3plc_conf.flags & G3PLC_INVALID))
+      return status;
+  }
+
+  CB(raw, cmd, size, status, g3plc_conf.data);
+
+  if(status == G3PLC_RCV_SUCCESS)
+    status = dissector(&g3plc_conf, cmd, size);
+  return status;
+}
+
+int g3plc_uart_putc(unsigned char c)
+{
+  /* Just writing out the FSM of what the code
+     below actually does:
+
+      (out-of-frame):
+         0x7e -> write-to-buf; (in-frame)
+         _    -> ignore; (out-of-frame)
+      (in-frame):
+         0x7e -> write-to-buf; message-received; (out-of-frame)
+         _    -> write-to-buf; (in-frame)
+
+     We make the distinction between the two states
+     by checking whether we are at the beginning of the
+     receive buffer or not. */
+  static unsigned char *rcv_ptr = rcv_cmdbuf_packed;
+
+  if(rcv_ptr == rcv_cmdbuf_packed) {
+    /* state (out-of-frame) */
+
+    if(c == 0x7e)
+      *rcv_ptr++ = c;      /* write-to-buf; state <- (in-frame) */
+    return G3PLC_RCV_CONT; /* ignore */
+  }
+  else {
+    /* state (in-frame) */
+
+    *rcv_ptr++ = c; /* write-to-buf */
+
+    if(c == 0x7e) {
+      /* message-received
+         state <- (out-of-frame) */
+      rcv_size = rcv_ptr - rcv_cmdbuf_packed;
+      rcv_ptr  = rcv_cmdbuf_packed;
+      return g3plc_conf.recv_frame();
+    }
+    else
+      return G3PLC_RCV_CONT;
+  }
+}

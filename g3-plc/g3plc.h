@@ -32,11 +32,14 @@
 
 #include <stdint.h>
 
+#include "g3plc-cmd.h"
+
 #define G3PLC_MAJOR 2
 #define G3PLC_MINOR 1
 
 enum g3plc_flags {
-  LORAMAC_NOACK = 0x1, /* enable ACK communications */
+  G3PLC_INVALID = 0x1, /* do not filter invalid packets (packet header, CRC) */
+  G3PLC_NOACK   = 0x2, /* enable ACK communications */
 };
 
 /* Initialization status */
@@ -44,8 +47,21 @@ enum g3plc_init_status {
   G3PLC_INIT_SUCCESS,
 };
 
+/* Status of a received frame */
+enum g3plc_receive_status {
+  G3PLC_RCV_SUCCESS,
+  G3PLC_RCV_CONT,        /* no frame were parsed (need more data) */
+  G3PLC_RCV_INVALID_CRC, /* CRC does not match received command */
+  G3PLC_RCV_INVALID_HDR, /* invalid header (too short) */
+};
+
 struct g3plc_config {
     struct g3plc_callbacks {
+    /* The raw callback is called for each received command packet.
+       By default invalid command packet (bad CRC or HDR) are filtered.
+       This is useful for user that wants to implement their own dissector. */
+    void (*raw)(const struct g3plc_cmd *cmd, unsigned int size, int status, void *data);
+
     void (*cb_recv)(uint16_t src, uint16_t dst,
                     const void *payload, unsigned payload_size,
                     int status, void *data);

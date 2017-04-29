@@ -31,10 +31,10 @@ struct g3plc_cmd {
   unsigned int reserved : 8; /* reserved byte */
 
   unsigned int type : 8; /* access target block */
-  unsigned int IDC  : 1; /* G3 channel index */
-  unsigned int IDA  : 3; /* type of SAP (req, confirm, indication) */
-  unsigned int IDP  : 4; /* target layer */
-  unsigned int CMD  : 8; /* command ID */
+  unsigned int idc  : 1; /* G3 channel index */
+  unsigned int ida  : 3; /* type of SAP (req, confirm, indication) */
+  unsigned int idp  : 4; /* target layer */
+  unsigned int cmd  : 8; /* command ID */
 
   unsigned char data[];
 };
@@ -210,5 +210,15 @@ enum g3plc_status {
   G3PLC_EAP_INSUFFICIENT_MEMSIZE  = 0xa0,
   G3PLC_EAP_IF_NO_RESPONSE        = 0xa3,
 };
+
+/* G3 PLC command packets are represented with a bitfield structure.
+   However the fields order is not defined in standard C, only its size.
+   So we need two functions to convert the host command bitfield to/from
+   network order.
+
+   Since G3 PLC commands have variable length, this function updates
+   the bit ordering directly inside the buffer. */
+void hton_g3plc_cmd(struct g3plc_cmd *cmd);
+void ntoh_g3plc_cmd(struct g3plc_cmd *cmd);
 
 #endif /* _G3PLC_CMD_H_ */

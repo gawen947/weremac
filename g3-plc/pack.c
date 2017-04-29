@@ -81,21 +81,24 @@ unsigned int pack(unsigned char *dst, const unsigned char *src, unsigned int siz
 unsigned int unpack(unsigned char *dst, const unsigned char *src, unsigned int size)
 {
   unsigned char *d = dst;
+  int n = size; /* We use a signed integer to avoid a buffer overflow.
+                   The negatives eat up an off by one in the while condition.
+                   It helps in the case 0x7e 0x7d 0x7e. */
 
   /* skip frame delimiter */
   src++;
-  size -= 2;
+  n -= 2;
 
   /* HDLC unescaping:
       0x7d 0x5e -> 0x7e
       0x7d 0x5d -> 0x7d */
-  while(size--) {
+  while(n-- > 0) {
     unsigned char c = *src++;
 
     if(c == 0x7d) {
       /* escaped character */
       *d = *src++ ^ 0x20;
-      size--;
+      n--;
     }
     else
       *d = c;
