@@ -193,6 +193,7 @@ int g3plc_init(const struct g3plc_config *conf)
 {
   int n;
   uint16_t u16;
+  uint8_t  u8;
 
   g3plc_conf = *conf;
 
@@ -228,6 +229,14 @@ int g3plc_init(const struct g3plc_config *conf)
      0 /* attr idx */,
      (unsigned char *)&u16,
      sizeof(u16));
+
+  /* configure max retrans */
+  u8 = g3plc_conf.retrans;
+  x_(n, mlme_set_request,
+     G3PLC_ATTR_RETRANS,
+     0 /* attr idx */,
+     (unsigned char *)&u8,
+     sizeof(u8));
 
   /* start MLME */
   x_(n, mlme_start_request, g3plc_conf.pan_id);
