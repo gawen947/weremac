@@ -29,17 +29,6 @@
 #include "g3plc/g3plc.h"
 #include "hybrid.h"
 
-#define HYBRID_MAX_PAYLOAD LORAMAC_MAX_PAYLOAD
-
-/* Specifies that an error happened in one of the
-   child layers. The child layer error is written
-   to the associated errno variable.
-   The value for those two is large enough so that
-   it does not interfere with hybrid layer's own
-   error codes. */
-#define HYBRID_ERR_LORA  0x1000
-#define HYBRID_ERR_G3PLC 0x1001
-
 /* child layers error code */
 int lora_errno;
 int g3plc_errno;

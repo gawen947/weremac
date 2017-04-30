@@ -31,10 +31,12 @@
 #include <getopt.h>
 #include <err.h>
 
+#include "lora/loramac-str.h"
+#include "g3plc/g3plc-str.h"
+#include "hybrid/hybrid-str.h"
+#include "hybrid/hybrid.h"
 #include "safe-call.h"
 #include "string-utils.h"
-#include "loramac-str.h"
-#include "loramac.h"
 #include "version.h"
 #include "common.h"
 #include "mode.h"
@@ -49,7 +51,7 @@
   start()).
 */
 
-#define BUF_SIZE LORAMAC_MAX_FRAME
+#define BUF_SIZE HYBRID_MAX_PAYLOAD
 
 static int sd;
 static const char *socket_driver_path = PACKAGE "-driver.sock";
@@ -75,9 +77,10 @@ static void exit_clean(void)
 
 static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
-                    int status, void *data)
+                    int status, int source, void *data)
 {
   UNUSED(data);
+  UNUSED(source);
 
   /* recv message format:
      [status (u8)][src (u16)][dst (u16)][payload] */
@@ -97,12 +100,12 @@ static void cb_recv(uint16_t src, uint16_t dst,
     warn("network error"); /* we don't fail on client error */
 }
 
-static void init(const struct context *ctx, struct loramac_config *loramac)
+static void init(const struct context *ctx, struct hybrid_config *hybrid)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
-  /* configure the LoRaMAC layer */
-  loramac->cb_recv = cb_recv;
+  /* configure the Hybrid layer */
+  hybrid->cb_recv = cb_recv;
 
   /* create socket */
   sd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
@@ -127,8 +130,8 @@ static void start(const struct context *ctx)
   /* send message format:
      [dst (u16)][payload] */
   unsigned char buf[BUF_SIZE];
+  const char *err;
   uint16_t dst;
-  unsigned int tx;
   int n, ret;
 
   while(1) {
@@ -147,12 +150,20 @@ static void start(const struct context *ctx)
 
     IF_VERBOSE(ctx, printf("Sending %d bytes to %04X\n",
                            n - (int)sizeof(uint16_t), dst));
-    ret = loramac_send(dst,
-                       buf + sizeof(uint16_t),
-                       n   - sizeof(uint16_t),
-                       &tx);
-    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret));
-    IF_VERBOSE(ctx, printf("TX COUNT : %d\n", tx));
+    ret = hybrid_send(dst,
+                      buf + sizeof(uint16_t),
+                      n   - sizeof(uint16_t));
+
+    switch(ret) {
+    case HYBRID_ERR_LORA:
+      err = loramac_rcv2str(lora_errno);
+      break;
+    case HYBRID_ERR_G3PLC:
+      err = g3plc_rcv2str(g3plc_errno);
+    default:
+      err = "hybrid layer error";
+    }
+    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", err, ret));
     IF_VERBOSE(ctx, printf("---------\n"));
   }
 }
