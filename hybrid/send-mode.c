@@ -33,7 +33,10 @@
 #include <time.h>
 
 #include "time-substract.h"
-#include "loramac-str.h"
+#include "hybrid/hybrid-str.h"
+#include "hybrid/hybrid.h"
+#include "lora/loramac-str.h"
+#include "g3plc/g3plc-str.h"
 #include "scale.h"
 #include "mode.h"
 #include "help.h"
@@ -45,7 +48,7 @@ static const char *message = "Hello World!";
 
 static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
-                    int status, void *data)
+                    int status, int source, void *data)
 {
   /* This mode only sends so we ignored received frames. */
   UNUSED(src);
@@ -53,26 +56,27 @@ static void cb_recv(uint16_t src, uint16_t dst,
   UNUSED(payload);
   UNUSED(payload_size);
   UNUSED(status);
+  UNUSED(source);
   UNUSED(data);
 }
 
-static void init(const struct context *ctx, struct loramac_config *loramac)
+static void init(const struct context *ctx, struct hybrid_config *hybrid)
 {
   UNUSED(ctx);
-  loramac->cb_recv = cb_recv;
+  hybrid->cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
 {
   struct timespec begin, end;
-  unsigned int tx;
+  const char *err;
   uint64_t nsec;
   int ret;
 
   UNUSED(ctx);
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-  ret = loramac_send(ctx->dst_mac, message, strlen(message), &tx);
+  ret = hybrid_send(ctx->dst_mac, message, strlen(message));
   clock_gettime(CLOCK_MONOTONIC, &end);
 
   nsec = substract_nsec(&begin, &end);
@@ -80,8 +84,18 @@ static void start(const struct context *ctx)
   putchar('\n');
   if(display_time)
     printf("TIME     : %s\n", scale_time(nsec));
-  printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
-  printf("TX COUNT : %d\n", tx);
+
+  switch(ret) {
+  case HYBRID_ERR_LORA:
+    err = loramac_rcv2str(lora_errno);
+    break;
+  case HYBRID_ERR_G3PLC:
+    err = g3plc_rcv2str(g3plc_errno);
+  default:
+    err = "hybrid layer error";
+  }
+
+  printf("TX STATUS: %s (%d)\n", err, ret);
 }
 
 static void destroy(const struct context *ctx)

@@ -9,7 +9,7 @@ OBJ = $(patsubst %.c,%.o,$(SRC))
 
 TARGETS = hybrid-stdio hybrid-send hybrid-unix
 
-HYBRID     = hybrid/hybrid.o
+HYBRID     = hybrid/hybrid.o hybrid/hybrid-str.o
 LORA_OBJ   = lora/loramac.o lora/loramac-str.o lora/crc-ccitt.o
 G3PLC_OBJ  = g3plc/g3plc.o g3plc/g3plc-cmd.o g3plc/pack.o \
 						 g3plc/cmdbuf.o g3plc/crc32.o g3plc/g3plc-str.o
