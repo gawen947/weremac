@@ -97,7 +97,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
     warn("network error"); /* we don't fail on client error */
 }
 
-static void init(const struct context *ctx, struct loramac_config *loramac)
+static void init(const struct context *ctx, struct g3plc_config *loramac)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 

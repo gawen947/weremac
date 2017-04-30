@@ -54,7 +54,7 @@
 struct io_thread_data {
   const struct iface_mode     *mode;
   const struct context        *ctx;
-  const struct loramac_config *config;
+  const struct g3plc_config *config;
 };
 
 static void configure_gpio(const struct context *ctx)
@@ -129,7 +129,7 @@ static void * input_thread_func(void *p)
 }
 
 static void start_io_threads(const struct context *ctx,
-                             const struct loramac_config *loramac)
+                             const struct g3plc_config *loramac)
 {
   pthread_t output_thread, input_thread;
   int err;
@@ -157,7 +157,7 @@ static uint8_t rnd_seqno(void)
 
 /* Display a summary of the MAC layer configuration. */
 static void display_summary(const struct iface_mode *mode,
-                            const struct loramac_config *conf,
+                            const struct g3plc_config *conf,
                             const struct context *ctx,
                             uint16_t dst_mac,
                             const char *dev,
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     .interval   = 200,
     .flood      = 0
   };
-  struct loramac_config loramac = {
+  struct g3plc_config loramac = {
     .uart_send   = uart_send,
     .start_timer = start_timer,
     .stop_timer  = stop_timer,

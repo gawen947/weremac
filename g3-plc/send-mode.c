@@ -56,7 +56,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
   UNUSED(data);
 }
 
-static void init(const struct context *ctx, struct loramac_config *loramac)
+static void init(const struct context *ctx, struct g3plc_config *loramac)
 {
   UNUSED(ctx);
   loramac->cb_recv = cb_recv;
