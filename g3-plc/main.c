@@ -37,9 +37,8 @@
 #include <signal.h>
 #include <err.h>
 
+#include "g3-plc/g3plc.h"
 #include "string-utils.h"
-#include "loramac-str.h"
-#include "loramac.h"
 #include "rpi-gpio.h"
 #include "version.h"
 #include "options.h"

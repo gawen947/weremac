@@ -25,7 +25,7 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#include "loramac.h"
+#include "g3-plc/g3plc.h"
 
 #define _stringify(s) #s
 #define stringify(s) _stringify(s)

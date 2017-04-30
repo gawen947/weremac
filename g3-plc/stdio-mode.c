@@ -31,7 +31,7 @@
 #include <err.h>
 
 #include "loramac-str.h"
-#include "loramac.h"
+#include "g3-plc/g3plc.h"
 #include "help.h"
 #include "main.h"
 #include "dump.h"

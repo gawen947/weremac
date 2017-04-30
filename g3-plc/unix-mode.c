@@ -34,7 +34,7 @@
 #include "safe-call.h"
 #include "string-utils.h"
 #include "loramac-str.h"
-#include "loramac.h"
+#include "g3-plc/g3plc.h"
 #include "version.h"
 #include "common.h"
 #include "mode.h"

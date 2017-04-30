@@ -31,7 +31,7 @@
 
 #include "xatoi.h"
 #include "uart.h"
-#include "loramac.h"
+#include "g3-plc/g3plc.h"
 
 static int fd;
 

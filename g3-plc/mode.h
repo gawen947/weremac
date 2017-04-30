@@ -25,7 +25,7 @@
 #ifndef _MODES_H_
 #define _MODES_H_
 
-#include "loramac.h"
+#include "g3-plc/g3plc.h"
 #include "main.h"
 
 /* Description of an iface module.
@@ -56,7 +56,7 @@ extern struct iface_mode {
      These functions are used by the module to configure
      the LoRaMAC layer (such as the recv function), and
      create/destroy mode specific structures. */
-  void (*init)(const struct context *ctx, struct loramac_config *loramac);
+  void (*init)(const struct context *ctx, struct g3plc_config *g3plc);
   void (*destroy)(const struct context *ctx);
 
   /* Actual behavior of the module.
