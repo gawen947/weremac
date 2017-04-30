@@ -55,7 +55,6 @@ static int sd;
 static const char *socket_driver_path = PACKAGE "-driver.sock";
 static const char *socket_app_path = PACKAGE "-app.sock";
 static struct sockaddr_un client;
-static socklen_t client_len;
 
 struct option unix_opts[] = {
   { "driver-path", required_argument, NULL, 'L' },
