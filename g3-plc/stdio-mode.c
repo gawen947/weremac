@@ -41,14 +41,15 @@
 #define PROMPT   "input> "
 #define BUF_SIZE G3PLC_MAX_PAYLOAD
 
-static void cb_recv(uint16_t src, uint16_t dst,
-                    const void *payload, unsigned int payload_size,
+
+static void cb_recv(const struct g3plc_data_hdr *hdr,
+                    const void *payload, unsigned payload_size,
                     int status, void *data)
 {
   UNUSED(data);
 
   putchar('\n');
-  printf("FROM %04X TO %04X:\n", src, dst);
+  printf("FROM %04X TO %04X:\n", (uint16_t)hdr->src_addr, (uint16_t)hdr->dst_addr);
   hex_dump(payload, payload_size);
   printf("RX STATUS: %s (%d)\n", g3plc_rcv2str(status), status);
 }
@@ -56,13 +57,12 @@ static void cb_recv(uint16_t src, uint16_t dst,
 static void init(const struct context  *ctx, struct g3plc_config *g3plc)
 {
   UNUSED(ctx);
-  g3plc->cb_recv = cb_recv;
+  g3plc->callbacks.cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
 {
   int ret;
-  unsigned int tx;
   char buf[BUF_SIZE];
 
   while(1) {
@@ -89,9 +89,8 @@ static void start(const struct context *ctx)
     else if(!strcmp(buf, "exit"))
       return;
 
-    ret = g3plc_send(ctx->dst_mac, buf, strlen(buf), &tx);
+    ret = g3plc_send(ctx->dst_mac, buf, strlen(buf));
     printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret);
-    printf("TX COUNT : %d\n", tx);
   }
 }
 

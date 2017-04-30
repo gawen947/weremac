@@ -407,10 +407,8 @@ int dissector(const struct g3plc_cmd *cmd, unsigned int size)
   }
 
   /* parse command packets */
-  switch(literal_cmd) {
-  case G3PLC_MCPS_DATA_INDICATION:
+  if(literal_cmd ==  G3PLC_MCPS_DATA_INDICATION)
     return mcps_data_indication(cmd->data, size);
-  }
 
   /* ignore anything else */
   return G3PLC_RCV_IGNORED;
