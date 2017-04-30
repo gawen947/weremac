@@ -33,7 +33,7 @@
 #include <time.h>
 
 #include "time-substract.h"
-#include "g3plc-str.h"
+#include "g3-plc/g3plc-str.h"
 #include "scale.h"
 #include "mode.h"
 #include "help.h"
@@ -43,13 +43,12 @@
 static int display_time;
 static const char *message = "Hello World!";
 
-static void cb_recv(uint16_t src, uint16_t dst,
-                    const void *payload, unsigned int payload_size,
+static void cb_recv(const struct g3plc_data_hdr *hdr,
+                    const void *payload, unsigned payload_size,
                     int status, void *data)
 {
   /* This mode only sends so we ignored received frames. */
-  UNUSED(src);
-  UNUSED(dst);
+  UNUSED(hdr);
   UNUSED(payload);
   UNUSED(payload_size);
   UNUSED(status);
@@ -59,20 +58,19 @@ static void cb_recv(uint16_t src, uint16_t dst,
 static void init(const struct context *ctx, struct g3plc_config *g3plc)
 {
   UNUSED(ctx);
-  g3plc->cb_recv = cb_recv;
+  g3plc->callbacks.cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
 {
   struct timespec begin, end;
-  unsigned int tx;
   uint64_t nsec;
   int ret;
 
   UNUSED(ctx);
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-  ret = g3plc_send(ctx->dst_mac, message, strlen(message), &tx);
+  ret = g3plc_send(ctx->dst_mac, message, strlen(message));
   clock_gettime(CLOCK_MONOTONIC, &end);
 
   nsec = substract_nsec(&begin, &end);
@@ -81,7 +79,6 @@ static void start(const struct context *ctx)
   if(display_time)
     printf("TIME     : %s\n", scale_time(nsec));
   printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret);
-  printf("TX COUNT : %d\n", tx);
 }
 
 static void destroy(const struct context *ctx)
