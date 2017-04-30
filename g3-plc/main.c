@@ -135,9 +135,9 @@ static void start_io_threads(const struct context *ctx,
   pthread_join(output_thread, NULL);
 }
 
-static uint8_t rnd_seqno(void)
+static void usleep_UL(unsigned long duration)
 {
-  return arc4random_uniform(0xff);
+  usleep(duration);
 }
 
 /* Display a summary of the MAC layer configuration. */
@@ -221,11 +221,11 @@ int main(int argc, char *argv[])
     .ntohs          = ntohs,
     .htonl          = htonl,
     .ntohl          = ntohl,
-    .usleep         = usleep,
+    .usleep         = usleep_UL,
     .recv_frame     = g3plc_recv_frame,
     .bandplan       = G3PLC_BP_CENELEC_A, /* FIXME: option */
     .pan_id         = 0xAAAA,             /* FIXME: option */
-    .ext_addr       = 0,                  /* FIXME: option */
+    .ext_address    = 0,                  /* FIXME: option */
     .retrans        = 5,
     .timeout        = 1000000,  /* 1 second */
     .flags          = 0,
@@ -234,7 +234,6 @@ int main(int argc, char *argv[])
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
   int err;
-  unsigned long val;
 
   enum opt {
     OPT_COMMIT = 0x100,

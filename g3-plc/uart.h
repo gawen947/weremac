@@ -41,7 +41,13 @@ void serial_init(const char *path, speed_t speed);
 /* Send a message over the configured UART stream. */
 int uart_send(const void *buf, unsigned int size);
 
+/* Read a message from the configured UART stream. */
+int uart_read(void *buf, unsigned int size);
+
 /* Start the UART read loop. */
 void uart_read_loop(void);
+
+/* Change UART baudrate. */
+int set_uart_speed(unsigned int speed);
 
 #endif /* _UART_H_ */

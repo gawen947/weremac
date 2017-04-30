@@ -34,11 +34,18 @@
 #include "g3-plc/g3plc.h"
 
 static int fd;
+static struct termios tty = {
+  .c_cflag = (CS8 | CLOCAL | CREAD) & ~CRTSCTS,
+  .c_iflag = IGNPAR,
+  .c_oflag = 0,
+  .c_lflag = 0,
+  .c_cc[VMIN]  = 1,
+  .c_cc[VTIME] = 0,
+};
 
-speed_t baud(const char *arg)
+
+static speed_t int2baud(int speed)
 {
-  int err;
-
   const struct {
     int     intval;
     speed_t baud;
@@ -62,29 +69,50 @@ speed_t baud(const char *arg)
     { 50, B50 },
     { 0,  B0 }};
 
+  for(b = bauds; b->intval ; b++)
+    if(b->intval == speed)
+      return b->baud;
+  return B0;
+}
+
+speed_t baud(const char *arg)
+{
+  speed_t speed;
+  int err;
+
   int arg_val = xatou(arg, &err);
   if(err)
     goto ERR;
 
-  for(b = bauds; b->intval ; b++)
-    if(b->intval == arg_val)
-      return b->baud;
+  speed = int2baud(arg_val);
+  if(speed != B0)
+    return speed;
 
 ERR:
   errx(EXIT_FAILURE, "unrecognized speed");
 }
 
+int set_uart_speed(unsigned int speed)
+{
+  int r;
+  speed_t baudrate = int2baud(speed);
+
+  if(baudrate == B0)
+    return -1;
+
+  tcgetattr(fd, &tty);
+  r = cfsetspeed(&tty, baudrate);
+  tcsetattr(fd, TCSANOW, &tty);
+  tcflush(fd, TCOFLUSH);
+
+  if(r < 0)
+    return r;
+  return 0;
+}
+
+
 void serial_init(const char *path, speed_t speed)
 {
-  struct termios tty = {
-    .c_cflag = (CS8 | CLOCAL | CREAD) & ~CRTSCTS,
-    .c_iflag = IGNPAR,
-    .c_oflag = 0,
-    .c_lflag = 0,
-    .c_cc[VMIN]  = 1,
-    .c_cc[VTIME] = 0,
-  };
-
   fd = open(path, O_RDWR | O_NOCTTY);
   if(fd < 0)
     err(EXIT_FAILURE, "cannot open serial port");
@@ -114,6 +142,15 @@ void serial_init(const char *path, speed_t speed)
 int uart_send(const void *buf, unsigned int size)
 {
   int r = write(fd, buf, size);
+
+  if(r < 0)
+    return r;
+  return 0;
+}
+
+int uart_read(void *buf, unsigned int size)
+{
+  int r = read(fd, buf, size);
 
   if(r < 0)
     return r;

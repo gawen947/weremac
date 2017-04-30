@@ -37,7 +37,7 @@ void append_crc(const struct g3plc_config *g3plc, unsigned char *src, unsigned i
   *(uint32_t *)src = g3plc->htonl(crc);
 }
 
-int check_crc(const struct g3plc_config *g3plc, const unsigned char *src, unsigned int *size)
+int extract_crc(const struct g3plc_config *g3plc, const unsigned char *src, unsigned int *size)
 {
   uint32_t crc_expected, crc_found;
 
