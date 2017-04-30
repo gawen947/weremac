@@ -49,7 +49,7 @@
   start()).
 */
 
-#define BUF_SIZE LORAMAC_MAX_FRAME
+#define BUF_SIZE G3PLC_MAX_FRAME
 
 static int sd;
 static const char *socket_driver_path = PACKAGE "-driver.sock";
@@ -101,7 +101,7 @@ static void init(const struct context *ctx, struct g3plc_config *g3plc)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
-  /* configure the LoRaMAC layer */
+  /* configure the G3-PLC layer */
   g3plc->cb_recv = cb_recv;
 
   /* create socket */

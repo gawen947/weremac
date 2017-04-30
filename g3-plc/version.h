@@ -36,14 +36,14 @@
 #define MINOR 5
 
 #define VERSION         stringify(MAJOR) "." stringify(MINOR)
-#define LORAMAC_VERSION stringify(LORAMAC_MAJOR) "." stringify(LORAMAC_MINOR)
+#define G3PLC_VERSION stringify(G3PLC_MAJOR) "." stringify(G3PLC_MINOR)
 
 #if !(defined COMMIT && defined PARTIAL_COMMIT)
 # define PACKAGE_VERSION PACKAGE " v" VERSION \
-         " (MAC-layer v" LORAMAC_VERSION ")"
+         " (MAC-layer v" G3PLC_VERSION ")"
 #else
 # define PACKAGE_VERSION PACKAGE " v" VERSION \
-         " (MAC-layer v" LORAMAC_VERSION ")"  \
+         " (MAC-layer v" G3PLC_VERSION ")"  \
          " (commit: " PARTIAL_COMMIT ")"
 #endif /* COMMIT */
 

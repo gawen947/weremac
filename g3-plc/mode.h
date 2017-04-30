@@ -30,7 +30,7 @@
 
 /* Description of an iface module.
    This describe how the program will
-   interface itself to the LoRaMAC device,
+   interface itself to the G3-PLC device,
    hence its behavior.
 
    The actual iface_mode used is declared
@@ -54,14 +54,14 @@ extern struct iface_mode {
 
   /* Executed before/after module execution.
      These functions are used by the module to configure
-     the LoRaMAC layer (such as the recv function), and
+     the G3-PLC layer (such as the recv function), and
      create/destroy mode specific structures. */
   void (*init)(const struct context *ctx, struct g3plc_config *g3plc);
   void (*destroy)(const struct context *ctx);
 
   /* Actual behavior of the module.
      This is the code that will eventually send data
-     to the LoRaMAC layer. */
+     to the G3-PLC layer. */
   void (*start)(const struct context *ctx);
 } iface_mode;
 

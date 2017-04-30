@@ -37,6 +37,7 @@
 #include <signal.h>
 #include <err.h>
 
+#include "g3-plc/g3plc-str.h"
 #include "g3-plc/g3plc.h"
 #include "string-utils.h"
 #include "rpi-gpio.h"
@@ -59,27 +60,11 @@ struct io_thread_data {
 
 static void configure_gpio(const struct context *ctx)
 {
-  if((ctx->gpio_irq > 0) |
-     (ctx->gpio_cts > 0) |
-     (ctx->gpio_reset > 0))
-    rpi_gpio_init();
+  if(ctx->gpio_reset < 0)
+    return;
 
-  if(ctx->gpio_irq > 0)
-    rpi_gpio_set_mode(ctx->gpio_irq, RPI_GPIO_IN);
-  if(ctx->gpio_cts > 0) {
-    rpi_gpio_set_mode(ctx->gpio_cts, RPI_GPIO_OUT);
-    rpi_gpio_set(ctx->gpio_cts);
-  }
-  if(ctx->gpio_reset > 0) {
-    rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
-
-    /* reset pulse */
-    rpi_gpio_set(ctx->gpio_reset);
-    usleep(10000);                   /* up 10ms */
-    rpi_gpio_clr(ctx->gpio_reset);
-    usleep(30000);                   /* down 30ms */
-    rpi_gpio_set(ctx->gpio_reset);   /* up */
-  }
+  rpi_gpio_init();
+  rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
 }
 
 static void initialize_driver(const struct context *ctx,
@@ -167,22 +152,16 @@ static void display_summary(const struct iface_mode *mode,
 
   printf(PACKAGE_VERSION "\n");
   printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
-  if((ctx->gpio_irq > 0) | (ctx->gpio_cts > 0) | (ctx->gpio_reset > 0)) {
+  if((ctx->gpio_reset > 0)) {
     printf("GPIO configured on:\n");
-    if(ctx->gpio_irq > 0)
-      printf("  - IRQ: %d\n", ctx->gpio_irq);
-    if(ctx->gpio_cts > 0)
-      printf("  - CTS: %d\n", ctx->gpio_cts);
-    if(ctx->gpio_reset > 0)
-      printf("  - RESET: %d\n", ctx->gpio_reset);
+    printf("  - RESET: %d\n", ctx->gpio_reset);
   }
   printf(" iface (source) MAC address: %04X\n", conf->mac_address);
   printf(" destination MAC address   : %04X\n", dst_mac);
-  printf(" ACK timeout               : %d us\n", conf->timeout);
-  printf(" SIFS                      : %d us\n", conf->sifs);
+  printf(" CMD timeout               : %d us\n", conf->timeout);
   printf(" Max. retransmissions      : %d tries\n", conf->retrans);
   printf(" flags                     : 0x%08lx\n", conf->flags);
-  for(flag = 0x1 ; flag <= LORAMAC_NOACK ; flag <<= 1) {
+  for(flag = 0x1 ; flag <= G3PLC_NOACK ; flag <<= 1) {
     if(conf->flags & flag)
       printf("  - %s\n", g3plc_flag2str(flag));
   }
@@ -198,18 +177,12 @@ static void print_help(const char *name, const char *mode_name,
 #ifdef COMMIT
     { 0,   "commit",          "Display commit information" }
 #endif /* COMMIT */
-    { 'p', "destination",     "Do not filter packets to another destination" },
     { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
-    { 'b', "no-broadcast",    "Ignore broadcast messages" },
     { 'a', "no-ack",          "Do not answer nor expect ACKs" },
     { 't', "timeout",         "ACK timeout in microseconds (default 4s)" },
-    { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 2s)" },
-    { 'S', "seqno",           "Initial sequence number (default: random)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)" },
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
-    { 0,   "irq",             "IRQ RPi GPIO" },
-    { 0,   "cts",             "CTS RPi GPIO" },
     { 0,   "reset",           "RESET RPi GPIO" },
     { 0, NULL, NULL }
   };
@@ -230,30 +203,33 @@ int main(int argc, char *argv[])
   struct context ctx = {
     .verbose    = 0,
     .dst_mac    = 0xffff,
-    .gpio_irq   = -1,
-    .gpio_cts   = -1,
     .gpio_reset = -1,
-    .size       = 4,
-    .count      = 0,
-    .interval   = 200,
-    .flood      = 0
   };
   struct g3plc_config g3plc = {
-    .uart_send   = uart_send,
-    .start_timer = start_timer,
-    .stop_timer  = stop_timer,
-    .wait_timer  = wait_timer,
-    .lock        = lock,
-    .unlock      = unlock,
-    .htons       = htons,
-    .ntohs       = ntohs,
-    .recv_frame  = g3plc_recv_frame,
-    .seqno       = rnd_seqno(),
-    .retrans     = 3,
-    .timeout     = 4000000, /* 4 seconds */
-    .sifs        = 2000000, /* 2 seconds */
-    .flags       = 0,
-    .data        = &ctx
+    .callbacks = {
+      .raw     = NULL,
+      .cb_recv = NULL
+    },
+
+    .uart_send      = uart_send,
+    .uart_read      = uart_read,
+    .set_uart_speed = set_uart_speed,
+    .start_timer    = start_timer,
+    .stop_timer     = stop_timer,
+    .wait_timer     = wait_timer,
+    .htons          = htons,
+    .ntohs          = ntohs,
+    .htonl          = htonl,
+    .ntohl          = ntohl,
+    .usleep         = usleep,
+    .recv_frame     = g3plc_recv_frame,
+    .bandplan       = G3PLC_BP_CENELEC_A, /* FIXME: option */
+    .pan_id         = 0xAAAA,             /* FIXME: option */
+    .ext_addr       = 0,                  /* FIXME: option */
+    .retrans        = 5,
+    .timeout        = 1000000,  /* 1 second */
+    .flags          = 0,
+    .data           = &ctx
   };
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
@@ -277,14 +253,10 @@ int main(int argc, char *argv[])
 #endif /* COMMIT */
 
     /* flags */
-    { "promiscuous", no_argument, NULL, 'p' },
     { "invalid", no_argument, NULL, 'i' },
-    { "no-broadcast", no_argument, NULL, 'b' },
     { "no-ack", no_argument, NULL, 'a' },
 
     { "timeout", required_argument, NULL, 't' },
-    { "sifs", required_argument, NULL, 's' },
-    { "seqno", required_argument, NULL, 'S' },
     { "retransmissions", required_argument, NULL, 'r' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
@@ -300,7 +272,7 @@ int main(int argc, char *argv[])
      structure are merged from both
      the common options and the mode
      (stdio, ping, ...) options. */
-  char * optstring_merged    = strcat_dup("hVvpibat:s:S:r:B:d:", iface_mode.optstring);
+  char * optstring_merged    = strcat_dup("hVviat:r:B:d:", iface_mode.optstring);
   struct option *opts_merged = merge_opts(common_opts, iface_mode.long_opts);
 
   prog_name = basename(argv[0]);
@@ -316,20 +288,6 @@ int main(int argc, char *argv[])
       continue; /* this was a mode option, skip parsing common options */
 
     switch(c) {
-    case OPT_IRQ:
-      ctx.gpio_irq = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse IRQ GPIO");
-      else if(!rpi_gpio_check(ctx.gpio_irq))
-        errx(EXIT_FAILURE, "invalid IRQ GPIO number");
-      break;
-    case OPT_CTS:
-      ctx.gpio_cts = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse CTS GPIO");
-      else if(!rpi_gpio_check(ctx.gpio_cts))
-        errx(EXIT_FAILURE, "invalid CTS GPIO number");
-      break;
     case OPT_RESET:
       ctx.gpio_reset = xatou(optarg, &err);
       if(err)
@@ -340,17 +298,11 @@ int main(int argc, char *argv[])
     case 'v':
       ctx.verbose = 1;
       break;
-    case 'p':
-      g3plc.flags |= LORAMAC_PROMISCUOUS;
-      break;
     case 'i':
-      g3plc.flags |= LORAMAC_INVALID;
-      break;
-    case 'b':
-      g3plc.flags |= LORAMAC_NOBROADCAST;
+      g3plc.flags |= G3PLC_INVALID;
       break;
     case 'a':
-      g3plc.flags |= LORAMAC_NOACK;
+      g3plc.flags |= G3PLC_NOACK;
       break;
     case 'd':
       ctx.dst_mac = strtol(optarg, NULL, 16);
@@ -361,18 +313,6 @@ int main(int argc, char *argv[])
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
       break;
-    case 's':
-      g3plc.sifs = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse SIFS value");
-      break;
-    case 'S':
-      val = xatou(optarg, &err);
-      if(err)
-        errx(EXIT_FAILURE, "cannot parse sequence number");
-      else if(val > 0xff)
-        errx(EXIT_FAILURE, "sequence number too large");
-      g3plc.seqno = val;
     case 'r':
       g3plc.retrans = xatou(optarg, &err);
       if(err)
@@ -431,19 +371,19 @@ int main(int argc, char *argv[])
      a timer is triggered. */
   thread_block_signals();
 
-  /* Initialize LoRaMAC layer.
+  /* Initialize G3-PLC layer.
      The interface mode still has to configure
      the g3plc configuration structure. That
      is why we initialize the MAC layer after
      the mode. */
   err = g3plc_init(&g3plc);
   if(err < 0)
-    errx(EXIT_FAILURE, "cannot initialize LoRaMAC: %s",
+    errx(EXIT_FAILURE, "cannot initialize G3-PLC: %s",
                        g3plc_init2str(err));
 
 
   /* Start the threads that will handle the IO
-     with the LoRaMAC layer. That is:
+     with the G3-PLC layer. That is:
        - The input thread that read new messages from UART.
        - The output thread that send message according to iface_mode. */
   start_io_threads(&ctx, &g3plc);

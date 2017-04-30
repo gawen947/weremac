@@ -37,16 +37,7 @@ struct context {
   uint16_t dst_mac;
 
   /* GPIO (negative means disabled) */
-  int gpio_irq;
-  int gpio_cts;
   int gpio_reset;
-
-  /* mode specific */
-  /* ping options */
-  int flood;
-  unsigned int size;
-  unsigned int count;
-  unsigned int interval;
 };
 
 #endif /* _MAIN_H_ */
