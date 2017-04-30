@@ -101,7 +101,7 @@ static void init(const struct context *ctx, struct hybrid_config *hybrid)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
-  /* configure the G3-PLC layer */
+  /* configure the hybrid layer */
   hybrid->callbacks.cb_recv = cb_recv;
 
   /* create socket */

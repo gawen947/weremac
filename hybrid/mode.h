@@ -30,7 +30,7 @@
 
 /* Description of an iface module.
    This describe how the program will
-   interface itself to the G3-PLC device,
+   interface itself to the hybrid device,
    hence its behavior.
 
    The actual iface_mode used is declared
@@ -54,14 +54,14 @@ extern struct iface_mode {
 
   /* Executed before/after module execution.
      These functions are used by the module to configure
-     the G3-PLC layer (such as the recv function), and
+     the hybrid layer (such as the recv function), and
      create/destroy mode specific structures. */
   void (*init)(const struct context *ctx, struct hybrid_config *hybrid);
   void (*destroy)(const struct context *ctx);
 
   /* Actual behavior of the module.
      This is the code that will eventually send data
-     to the G3-PLC layer. */
+     to the hybrid layer. */
   void (*start)(const struct context *ctx);
 } iface_mode;
 
