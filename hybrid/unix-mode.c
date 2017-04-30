@@ -31,10 +31,10 @@
 #include <getopt.h>
 #include <err.h>
 
-#include "hybrid/hybrid-str.h"
-#include "hybrid/hybrid.h"
 #include "safe-call.h"
 #include "string-utils.h"
+#include "loramac-str.h"
+#include "loramac.h"
 #include "version.h"
 #include "common.h"
 #include "mode.h"
@@ -49,7 +49,7 @@
   start()).
 */
 
-#define BUF_SIZE G3PLC_MAX_CMD
+#define BUF_SIZE LORAMAC_MAX_FRAME
 
 static int sd;
 static const char *socket_driver_path = PACKAGE "-driver.sock";
@@ -73,8 +73,8 @@ static void exit_clean(void)
   unlink(socket_app_path);
 }
 
-static void cb_recv(const struct hybrid_data_hdr *hdr,
-                    const void *payload, unsigned payload_size,
+static void cb_recv(uint16_t src, uint16_t dst,
+                    const void *payload, unsigned int payload_size,
                     int status, void *data)
 {
   UNUSED(data);
@@ -86,9 +86,9 @@ static void cb_recv(const struct hybrid_data_hdr *hdr,
   size_t  len = payload_size + sizeof(uint8_t) + sizeof(uint16_t) * 2;
   ssize_t n;
 
-  *(uint8_t  *)b = status;        b += sizeof(uint8_t);
-  *(uint16_t *)b = hdr->src_addr; b += sizeof(uint16_t);
-  *(uint16_t *)b = hdr->dst_addr; b += sizeof(uint16_t);
+  *(uint8_t  *)b = status; b += sizeof(uint8_t);
+  *(uint16_t *)b = src;    b += sizeof(uint16_t);
+  *(uint16_t *)b = dst;    b += sizeof(uint16_t);
 
   memcpy(b, payload, payload_size);
 
@@ -97,12 +97,12 @@ static void cb_recv(const struct hybrid_data_hdr *hdr,
     warn("network error"); /* we don't fail on client error */
 }
 
-static void init(const struct context *ctx, struct hybrid_config *hybrid)
+static void init(const struct context *ctx, struct loramac_config *loramac)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
-  /* configure the hybrid layer */
-  hybrid->callbacks.cb_recv = cb_recv;
+  /* configure the LoRaMAC layer */
+  loramac->cb_recv = cb_recv;
 
   /* create socket */
   sd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
@@ -128,6 +128,7 @@ static void start(const struct context *ctx)
      [dst (u16)][payload] */
   unsigned char buf[BUF_SIZE];
   uint16_t dst;
+  unsigned int tx;
   int n, ret;
 
   while(1) {
@@ -146,10 +147,12 @@ static void start(const struct context *ctx)
 
     IF_VERBOSE(ctx, printf("Sending %d bytes to %04X\n",
                            n - (int)sizeof(uint16_t), dst));
-    ret = hybrid_send(dst,
-                     buf + sizeof(uint16_t),
-                     n   - sizeof(uint16_t));
-    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", hybrid_send2str(ret), ret));
+    ret = loramac_send(dst,
+                       buf + sizeof(uint16_t),
+                       n   - sizeof(uint16_t),
+                       &tx);
+    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret));
+    IF_VERBOSE(ctx, printf("TX COUNT : %d\n", tx));
     IF_VERBOSE(ctx, printf("---------\n"));
   }
 }

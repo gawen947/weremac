@@ -33,7 +33,7 @@
 #include <time.h>
 
 #include "time-substract.h"
-#include "hybrid/hybrid-str.h"
+#include "loramac-str.h"
 #include "scale.h"
 #include "mode.h"
 #include "help.h"
@@ -43,34 +43,36 @@
 static int display_time;
 static const char *message = "Hello World!";
 
-static void cb_recv(const struct hybrid_data_hdr *hdr,
-                    const void *payload, unsigned payload_size,
+static void cb_recv(uint16_t src, uint16_t dst,
+                    const void *payload, unsigned int payload_size,
                     int status, void *data)
 {
   /* This mode only sends so we ignored received frames. */
-  UNUSED(hdr);
+  UNUSED(src);
+  UNUSED(dst);
   UNUSED(payload);
   UNUSED(payload_size);
   UNUSED(status);
   UNUSED(data);
 }
 
-static void init(const struct context *ctx, struct hybrid_config *hybrid)
+static void init(const struct context *ctx, struct loramac_config *loramac)
 {
   UNUSED(ctx);
-  hybrid->callbacks.cb_recv = cb_recv;
+  loramac->cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
 {
   struct timespec begin, end;
+  unsigned int tx;
   uint64_t nsec;
   int ret;
 
   UNUSED(ctx);
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-  ret = hybrid_send(ctx->dst_mac, message, strlen(message));
+  ret = loramac_send(ctx->dst_mac, message, strlen(message), &tx);
   clock_gettime(CLOCK_MONOTONIC, &end);
 
   nsec = substract_nsec(&begin, &end);
@@ -78,7 +80,8 @@ static void start(const struct context *ctx)
   putchar('\n');
   if(display_time)
     printf("TIME     : %s\n", scale_time(nsec));
-  printf("TX STATUS: %s (%d)\n", hybrid_send2str(ret), ret);
+  printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
+  printf("TX COUNT : %d\n", tx);
 }
 
 static void destroy(const struct context *ctx)

@@ -30,6 +30,8 @@
 #include <errno.h>
 #include <err.h>
 
+#include "lora/loramac-str.h"
+#include "g3plc/g3plc-str.h"
 #include "hybrid/hybrid-str.h"
 #include "hybrid/hybrid.h"
 #include "help.h"
@@ -39,31 +41,44 @@
 #include "mode.h"
 
 #define PROMPT   "input> "
-#define BUF_SIZE G3PLC_MAX_PAYLOAD
+#define BUF_SIZE HYBRID_MAX_PAYLOAD
 
-
-static void cb_recv(const struct hybrid_data_hdr *hdr,
-                    const void *payload, unsigned payload_size,
-                    int status, void *data)
+static void cb_recv(uint16_t src, uint16_t dst,
+                    const void *payload, unsigned int payload_size,
+                    int status, int source, void *data)
 {
+  const char *err;
   UNUSED(data);
 
   putchar('\n');
-  printf("FROM %04X TO %04X:\n", (uint16_t)hdr->src_addr, (uint16_t)hdr->dst_addr);
+  printf("FROM %04X TO %04X:\n", src, dst);
+  printf("RECEIVED FROM %s\n", source == HYBRID_SOURCE_LORA ? "LoRaMAC" : "G3-PLC" );
   hex_dump(payload, payload_size);
-  printf("RX STATUS: %s (%d)\n", hybrid_rcv2str(status), status);
+
+  switch(status) {
+  case HYBRID_ERR_LORA:
+    err = loramac_rcv2str(lora_errno);
+    break;
+  case HYBRID_ERR_G3PLC:
+    err = g3plc_rcv2str(g3plc_errno);
+  default:
+    err = "hybrid layer error";
+  }
+  printf("RX STATUS: %s (%d)\n", err, status);
 }
 
 static void init(const struct context  *ctx, struct hybrid_config *hybrid)
 {
   UNUSED(ctx);
-  hybrid->callbacks.cb_recv = cb_recv;
+  hybrid->cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
 {
   int ret;
+  const char *err;
   char buf[BUF_SIZE];
+
 
   while(1) {
     printf(PROMPT);
@@ -90,7 +105,17 @@ static void start(const struct context *ctx)
       return;
 
     ret = hybrid_send(ctx->dst_mac, buf, strlen(buf));
-    printf("TX STATUS: %s (%d)\n", hybrid_send2str(ret), ret);
+    switch(ret) {
+    case HYBRID_ERR_LORA:
+      err = loramac_send2str(lora_errno);
+      break;
+    case HYBRID_ERR_G3PLC:
+      err = g3plc_send2str(g3plc_errno);
+    default:
+      err = "hybrid layer error";
+    }
+
+    printf("TX STATUS: %s (%d)\n", err, ret);
   }
 }
 
