@@ -31,7 +31,7 @@
 
 #include "xatoi.h"
 #include "uart.h"
-#include "g3plc/g3plc.h"
+#include "hybrid/hybrid.h"
 
 static int fd;
 static struct termios tty = {
@@ -174,6 +174,6 @@ void uart_read_loop(void)
 
     /* flush buffer */
     for(i = 0 ; i < size ; i++)
-      g3plc_uart_putc(buf[i]);
+      hybrid_uart_putc(buf[i]);
   }
 }

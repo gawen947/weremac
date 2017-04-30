@@ -30,8 +30,8 @@
 #include <errno.h>
 #include <err.h>
 
-#include "g3plc/g3plc-str.h"
-#include "g3plc/g3plc.h"
+#include "hybrid/hybrid-str.h"
+#include "hybrid/hybrid.h"
 #include "help.h"
 #include "main.h"
 #include "dump.h"
@@ -42,7 +42,7 @@
 #define BUF_SIZE G3PLC_MAX_PAYLOAD
 
 
-static void cb_recv(const struct g3plc_data_hdr *hdr,
+static void cb_recv(const struct hybrid_data_hdr *hdr,
                     const void *payload, unsigned payload_size,
                     int status, void *data)
 {
@@ -51,13 +51,13 @@ static void cb_recv(const struct g3plc_data_hdr *hdr,
   putchar('\n');
   printf("FROM %04X TO %04X:\n", (uint16_t)hdr->src_addr, (uint16_t)hdr->dst_addr);
   hex_dump(payload, payload_size);
-  printf("RX STATUS: %s (%d)\n", g3plc_rcv2str(status), status);
+  printf("RX STATUS: %s (%d)\n", hybrid_rcv2str(status), status);
 }
 
-static void init(const struct context  *ctx, struct g3plc_config *g3plc)
+static void init(const struct context  *ctx, struct hybrid_config *hybrid)
 {
   UNUSED(ctx);
-  g3plc->callbacks.cb_recv = cb_recv;
+  hybrid->callbacks.cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
@@ -89,8 +89,8 @@ static void start(const struct context *ctx)
     else if(!strcmp(buf, "exit"))
       return;
 
-    ret = g3plc_send(ctx->dst_mac, buf, strlen(buf));
-    printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret);
+    ret = hybrid_send(ctx->dst_mac, buf, strlen(buf));
+    printf("TX STATUS: %s (%d)\n", hybrid_send2str(ret), ret);
   }
 }
 

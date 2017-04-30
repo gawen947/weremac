@@ -31,8 +31,8 @@
 #include <getopt.h>
 #include <err.h>
 
-#include "g3plc/g3plc-str.h"
-#include "g3plc/g3plc.h"
+#include "hybrid/hybrid-str.h"
+#include "hybrid/hybrid.h"
 #include "safe-call.h"
 #include "string-utils.h"
 #include "version.h"
@@ -73,7 +73,7 @@ static void exit_clean(void)
   unlink(socket_app_path);
 }
 
-static void cb_recv(const struct g3plc_data_hdr *hdr,
+static void cb_recv(const struct hybrid_data_hdr *hdr,
                     const void *payload, unsigned payload_size,
                     int status, void *data)
 {
@@ -97,12 +97,12 @@ static void cb_recv(const struct g3plc_data_hdr *hdr,
     warn("network error"); /* we don't fail on client error */
 }
 
-static void init(const struct context *ctx, struct g3plc_config *g3plc)
+static void init(const struct context *ctx, struct hybrid_config *hybrid)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
   /* configure the G3-PLC layer */
-  g3plc->callbacks.cb_recv = cb_recv;
+  hybrid->callbacks.cb_recv = cb_recv;
 
   /* create socket */
   sd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
@@ -146,10 +146,10 @@ static void start(const struct context *ctx)
 
     IF_VERBOSE(ctx, printf("Sending %d bytes to %04X\n",
                            n - (int)sizeof(uint16_t), dst));
-    ret = g3plc_send(dst,
+    ret = hybrid_send(dst,
                      buf + sizeof(uint16_t),
                      n   - sizeof(uint16_t));
-    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret));
+    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", hybrid_send2str(ret), ret));
     IF_VERBOSE(ctx, printf("---------\n"));
   }
 }

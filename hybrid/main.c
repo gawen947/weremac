@@ -37,8 +37,7 @@
 #include <signal.h>
 #include <err.h>
 
-#include "g3plc/g3plc-str.h"
-#include "g3plc/g3plc.h"
+#include "hybrid/hybrid.h"
 #include "string-utils.h"
 #include "rpi-gpio.h"
 #include "version.h"
@@ -55,7 +54,7 @@
 struct io_thread_data {
   const struct iface_mode     *mode;
   const struct context        *ctx;
-  const struct g3plc_config *config;
+  const struct hybrid_config *config;
 };
 
 static void configure_gpio(const struct context *ctx)
@@ -114,7 +113,7 @@ static void * input_thread_func(void *p)
 }
 
 static void start_io_threads(const struct context *ctx,
-                             const struct g3plc_config *g3plc)
+                             const struct hybrid_config *hybrid)
 {
   pthread_t output_thread, input_thread;
   int err;
@@ -122,7 +121,7 @@ static void start_io_threads(const struct context *ctx,
   struct io_thread_data data = (struct io_thread_data){
     .mode   = &iface_mode,
     .ctx    = ctx,
-    .config = g3plc
+    .config = hybrid
   };
 
   thread_block_signals();
@@ -142,7 +141,7 @@ static void usleep_UL(unsigned long duration)
 
 /* Display a summary of the MAC layer configuration. */
 static void display_summary(const struct iface_mode *mode,
-                            const struct g3plc_config *conf,
+                            const struct hybrid_config *conf,
                             const struct context *ctx,
                             uint16_t dst_mac,
                             const char *dev,
@@ -163,7 +162,7 @@ static void display_summary(const struct iface_mode *mode,
   printf(" flags                     : 0x%08lx\n", conf->flags);
   for(flag = 0x1 ; flag <= G3PLC_NOACK ; flag <<= 1) {
     if(conf->flags & flag)
-      printf("  - %s\n", g3plc_flag2str(flag));
+      printf("  - %s\n", hybrid_flag2str(flag));
   }
 }
 
@@ -205,7 +204,7 @@ int main(int argc, char *argv[])
     .dst_mac    = 0xffff,
     .gpio_reset = -1,
   };
-  struct g3plc_config g3plc = {
+  struct hybrid_config hybrid = {
     .callbacks = {
       .raw     = NULL,
       .cb_recv = NULL
@@ -222,7 +221,7 @@ int main(int argc, char *argv[])
     .htonl          = htonl,
     .ntohl          = ntohl,
     .usleep         = usleep_UL,
-    .recv_frame     = g3plc_recv_frame,
+    .recv_frame     = hybrid_recv_frame,
     .bandplan       = G3PLC_BP_CENELEC_A, /* FIXME: option */
     .pan_id         = 0xAAAA,             /* FIXME: option */
     .ext_address    = 0,                  /* FIXME: option */
@@ -298,25 +297,25 @@ int main(int argc, char *argv[])
       ctx.verbose = 1;
       break;
     case 'i':
-      g3plc.flags |= G3PLC_INVALID;
+      hybrid.flags |= G3PLC_INVALID;
       break;
     case 'a':
-      g3plc.flags |= G3PLC_NOACK;
+      hybrid.flags |= G3PLC_NOACK;
       break;
     case 'd':
       ctx.dst_mac = strtol(optarg, NULL, 16);
       break;
     case 't':
       /* FIXME: should understand a time suffix */
-      g3plc.timeout = xatou(optarg, &err);
+      hybrid.timeout = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
       break;
     case 'r':
-      g3plc.retrans = xatou(optarg, &err);
+      hybrid.retrans = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
-      if(g3plc.retrans < 1)
+      if(hybrid.retrans < 1)
         errx(EXIT_FAILURE, "invalid number of retransmissions");
       break;
     case 'B':
@@ -349,21 +348,21 @@ int main(int argc, char *argv[])
     goto EXIT;
   }
 
-  g3plc.mac_address = strtol(argv[0], NULL, 16);
+  hybrid.mac_address = strtol(argv[0], NULL, 16);
   device              = argv[1];
 
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
   IF_VERBOSE(&ctx, display_summary(&iface_mode,
-                                   &g3plc,
+                                   &hybrid,
                                    &ctx,
                                    ctx.dst_mac,
                                    device,
                                    speed_str));
 
   initialize_driver(&ctx, device, speed);
-  iface_mode.init(&ctx, &g3plc);
+  iface_mode.init(&ctx, &hybrid);
 
   /* Block the SIGALRM signal so that it is
      not received by the main thread when
@@ -372,20 +371,20 @@ int main(int argc, char *argv[])
 
   /* Initialize G3-PLC layer.
      The interface mode still has to configure
-     the g3plc configuration structure. That
+     the hybrid configuration structure. That
      is why we initialize the MAC layer after
      the mode. */
-  err = g3plc_init(&g3plc);
+  err = hybrid_init(&hybrid);
   if(err < 0)
     errx(EXIT_FAILURE, "cannot initialize G3-PLC: %s",
-                       g3plc_init2str(err));
+                       hybrid_init2str(err));
 
 
   /* Start the threads that will handle the IO
      with the G3-PLC layer. That is:
        - The input thread that read new messages from UART.
        - The output thread that send message according to iface_mode. */
-  start_io_threads(&ctx, &g3plc);
+  start_io_threads(&ctx, &hybrid);
 
   /* IO threads returned, this is the end.
      We can release everything. */

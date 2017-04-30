@@ -25,25 +25,25 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#include "g3plc/g3plc.h"
+#include "hybrid/hybrid.h"
 
 #define _stringify(s) #s
 #define stringify(s) _stringify(s)
 
-#define PACKAGE "G3-PLC"
+#define PACKAGE "Hybrid"
 
 #define MAJOR 1
-#define MINOR 5
+#define MINOR 6
 
-#define VERSION         stringify(MAJOR) "." stringify(MINOR)
-#define G3PLC_VERSION stringify(G3PLC_MAJOR) "." stringify(G3PLC_MINOR)
+#define VERSION        stringify(MAJOR) "." stringify(MINOR)
+#define HYBRID_VERSION stringify(G3PLC_MAJOR) "." stringify(G3PLC_MINOR)
 
 #if !(defined COMMIT && defined PARTIAL_COMMIT)
 # define PACKAGE_VERSION PACKAGE " v" VERSION \
-         " (MAC-layer v" G3PLC_VERSION ")"
+         " (MAC-layer v" HYBRID_VERSION ")"
 #else
 # define PACKAGE_VERSION PACKAGE " v" VERSION \
-         " (MAC-layer v" G3PLC_VERSION ")"  \
+         " (MAC-layer v" HYBRID_VERSION ")"  \
          " (commit: " PARTIAL_COMMIT ")"
 #endif /* COMMIT */
 
