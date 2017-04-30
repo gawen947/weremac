@@ -35,19 +35,20 @@ speed_t baud(const char *arg);
 
 /* Open and setup the serial line and return a file descriptor to the serial
    line. The line will be left untouched if the speed is B0. Otherwise it will
-   use a default configuration for the line (8N1). */
-void serial_init(const char *path, speed_t speed);
+   use a default configuration for the line (8N1).
+   Returns the associated file descriptor. */
+int serial_init(struct termios *tty, const char *path, speed_t speed);
 
 /* Send a message over the configured UART stream. */
-int uart_send(const void *buf, unsigned int size);
+int uart_send(int fd, const void *buf, unsigned int size);
 
 /* Read a message from the configured UART stream. */
-int uart_read(void *buf, unsigned int size);
+int uart_read(int fd, void *buf, unsigned int size);
 
 /* Start the UART read loop. */
-void uart_read_loop(void);
+void uart_read_loop(int fd, int (*uart_putc)(unsigned char c));
 
 /* Change UART baudrate. */
-int set_uart_speed(unsigned int speed);
+int set_uart_speed(struct termios *tty, int fd, unsigned int speed);
 
 #endif /* _UART_H_ */

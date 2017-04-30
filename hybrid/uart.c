@@ -33,17 +33,6 @@
 #include "uart.h"
 #include "hybrid/hybrid.h"
 
-static int fd;
-static struct termios tty = {
-  .c_cflag = (CS8 | CLOCAL | CREAD) & ~CRTSCTS,
-  .c_iflag = IGNPAR,
-  .c_oflag = 0,
-  .c_lflag = 0,
-  .c_cc[VMIN]  = 1,
-  .c_cc[VTIME] = 0,
-};
-
-
 static speed_t int2baud(int speed)
 {
   const struct {
@@ -92,7 +81,7 @@ ERR:
   errx(EXIT_FAILURE, "unrecognized speed");
 }
 
-int set_uart_speed(unsigned int speed)
+int set_uart_speed(struct termios *tty, int fd, unsigned int speed)
 {
   int r;
   speed_t baudrate = int2baud(speed);
@@ -100,9 +89,9 @@ int set_uart_speed(unsigned int speed)
   if(baudrate == B0)
     return -1;
 
-  tcgetattr(fd, &tty);
-  r = cfsetspeed(&tty, baudrate);
-  tcsetattr(fd, TCSANOW, &tty);
+  tcgetattr(fd, tty);
+  r = cfsetspeed(tty, baudrate);
+  tcsetattr(fd, TCSANOW, tty);
   tcflush(fd, TCOFLUSH);
 
   if(r < 0)
@@ -111,9 +100,18 @@ int set_uart_speed(unsigned int speed)
 }
 
 
-void serial_init(const char *path, speed_t speed)
+int serial_init(struct termios *tty, const char *path, speed_t speed)
 {
-  fd = open(path, O_RDWR | O_NOCTTY);
+  *tty = (struct termios){
+    .c_cflag = (CS8 | CLOCAL | CREAD) & ~CRTSCTS,
+    .c_iflag = IGNPAR,
+    .c_oflag = 0,
+    .c_lflag = 0,
+    .c_cc[VMIN]  = 1,
+    .c_cc[VTIME] = 0,
+  };
+
+  int fd = open(path, O_RDWR | O_NOCTTY);
   if(fd < 0)
     err(EXIT_FAILURE, "cannot open serial port");
 
@@ -123,9 +121,9 @@ void serial_init(const char *path, speed_t speed)
 
   /* we only setup the speed if requested */
   if(speed != B0)
-    cfsetspeed(&tty, speed);
+    cfsetspeed(tty, speed);
 
-  if(tcsetattr(fd, TCSANOW, &tty) < 0)
+  if(tcsetattr(fd, TCSANOW, tty) < 0)
     err(EXIT_FAILURE, "cannot set tty attributes");
 
   /* Some operating systems (eg Linux) bufferise the UART input
@@ -137,9 +135,11 @@ void serial_init(const char *path, speed_t speed)
      command would have no effect. */
   usleep(500);
   tcflush(fd, TCIOFLUSH);
+
+  return fd;
 }
 
-int uart_send(const void *buf, unsigned int size)
+int uart_send(int fd, const void *buf, unsigned int size)
 {
   int r = write(fd, buf, size);
 
@@ -148,7 +148,7 @@ int uart_send(const void *buf, unsigned int size)
   return 0;
 }
 
-int uart_read(void *buf, unsigned int size)
+int uart_read(int fd, void *buf, unsigned int size)
 {
   int r = read(fd, buf, size);
 
@@ -157,7 +157,7 @@ int uart_read(void *buf, unsigned int size)
   return 0;
 }
 
-void uart_read_loop(void)
+void uart_read_loop(int fd, int (*uart_putc)(unsigned char c))
 {
   unsigned char buf[UART_BUFFER_SIZE];
 
@@ -174,6 +174,6 @@ void uart_read_loop(void)
 
     /* flush buffer */
     for(i = 0 ; i < size ; i++)
-      hybrid_uart_putc(buf[i]);
+      uart_putc(buf[i]);
   }
 }

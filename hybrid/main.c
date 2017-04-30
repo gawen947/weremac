@@ -84,11 +84,13 @@ static void reset_set(void)
   rpi_gpio_set(ctx.gpio_reset);
 }
 
-static void initialize_driver(const struct context *ctx,
-                              const char *device, speed_t speed)
+static void initialize_driver(struct context *ctx,
+                              const char *lora_dev, const char *g3plc_dev,
+                              speed_t speed)
 {
   /* initialize serial */
-  serial_init(device, speed);
+  ctx->lora_uart_fd  = serial_init(&ctx->lora_tty, lora_dev, speed);
+  ctx->g3plc_uart_fd = serial_init(&ctx->g3plc_tty, g3plc_dev, speed);
   IF_VERBOSE(ctx, printf("Serial initialized!\n"));
 
   /* configure GPIO */
@@ -119,13 +121,24 @@ static void * output_thread_func(void *p)
   return NULL; /* FIXME: return with error code */
 }
 
-static void * input_thread_func(void *p)
+static void * input_thread_lora_func(void *p)
 {
   UNUSED(p);
 
   thread_block_signals();
 
-  uart_read_loop();
+  uart_read_loop(ctx.lora_uart_fd, hybrid_lora_uart_putc);
+
+  return NULL; /* FIXME: return with error code */
+}
+
+static void * input_thread_g3plc_func(void *p)
+{
+  UNUSED(p);
+
+  thread_block_signals();
+
+  uart_read_loop(ctx.g3plc_uart_fd, hybrid_g3plc_uart_putc);
 
   return NULL; /* FIXME: return with error code */
 }
@@ -133,7 +146,7 @@ static void * input_thread_func(void *p)
 static void start_io_threads(const struct context *ctx,
                              const struct hybrid_config *hybrid)
 {
-  pthread_t output_thread, input_thread;
+  pthread_t output_thread, input_thread_lora, input_thread_g3plc;
   int err;
 
   struct io_thread_data data = (struct io_thread_data){
@@ -145,11 +158,32 @@ static void start_io_threads(const struct context *ctx,
   thread_block_signals();
 
   err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
-  err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
+  err |= pthread_create(&input_thread_lora, NULL, input_thread_lora_func, &data);
+  err |= pthread_create(&input_thread_g3plc, NULL, input_thread_g3plc_func, &data);
   if(err)
     errx(EXIT_FAILURE, "cannot create threads");
 
   pthread_join(output_thread, NULL);
+}
+
+static int uart_lora_send(const void *buf, unsigned int size)
+{
+  return uart_send(ctx.lora_uart_fd, buf, size);
+}
+
+static int uart_g3plc_send(const void *buf, unsigned int size)
+{
+  return uart_send(ctx.g3plc_uart_fd, buf, size);
+}
+
+static int uart_g3plc_read(void *buf, unsigned int size)
+{
+  return uart_read(ctx.g3plc_uart_fd, buf, size);
+}
+
+static int set_uart_g3plc_speed(unsigned int speed)
+{
+  return set_uart_speed(&ctx.g3plc_tty, ctx.g3plc_uart_fd, speed);
 }
 
 static void usleep_UL(unsigned long duration)
@@ -167,21 +201,24 @@ static void display_summary(const struct iface_mode *mode,
                             const struct hybrid_config *conf,
                             const struct context *ctx,
                             uint16_t dst_mac,
-                            const char *dev,
+                            const char *lora_dev,
+                            const char *g3plc_dev,
                             const char *speed)
 {
   unsigned long flag;
 
   printf(PACKAGE_VERSION "\n");
-  printf("Using %s mode on %s @%s bauds.\n", mode->name, dev, speed);
+  printf("Using %s mode on %s (LoRa) and %s (G3PLC) @%s bauds.\n", mode->name, lora_dev, g3plc_dev, speed);
   if((ctx->gpio_reset > 0)) {
     printf("GPIO configured on:\n");
     printf("  - RESET: %d\n", ctx->gpio_reset);
   }
   printf(" iface (source) MAC address: %04X\n", conf->mac_address);
   printf(" destination MAC address   : %04X\n", dst_mac);
-  printf(" CMD timeout               : %d us\n", conf->timeout);
-  printf(" Max. retransmissions      : %d tries\n", conf->retrans);
+  printf(" CMD timeout               : %d us\n", conf->g3plc.timeout);
+  printf(" Max. G3PLC retransmissions: %d tries\n", conf->g3plc.retrans);
+  printf(" LoRa ACK timeout          : %d us\n", conf->lora.timeout);
+  printf(" LoRa SIFS                 : %d us\n", conf->lora.sifs);
   printf(" flags                     : 0x%08lx\n", conf->flags);
   for(flag = 0x1 ; flag <= HYBRID_NOACK ; flag <<= 1) {
     if(conf->flags & flag)
@@ -201,7 +238,10 @@ static void print_help(const char *name, const char *mode_name,
 #endif /* COMMIT */
     { 'i', "invalid",         "Do not filter invalid packets (packet header, CRC)" },
     { 'a', "no-ack",          "Do not answer nor expect ACKs" },
-    { 't', "timeout",         "ACK timeout in microseconds (default 4s)" },
+    { 't', "ack-timeout",     "LoRa ACK timeout in microseconds (default 4s)" },
+    { 'T', "cmd-timeout",     "G3-PLC command timeout (default 1s)" },
+    { 's', "sifs",            "Short Inter Frame Spacing time in microseconds (default 2s)" },
+    { 'S', "seqno",           "Initial sequence number (default: random)" },
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)" },
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
@@ -209,7 +249,7 @@ static void print_help(const char *name, const char *mode_name,
     { 0, NULL, NULL }
   };
 
-  help(name, "[OPTIONS] source device", common_messages);
+  help(name, "[OPTIONS] source lora-dev g3plc-dev", common_messages);
 
   if(extra_messages) {
     fprintf(stderr, "\nExtra options for %s mode:\n", mode_name);
@@ -220,7 +260,7 @@ static void print_help(const char *name, const char *mode_name,
 int main(int argc, char *argv[])
 {
   const char *prog_name;
-  const char *device;
+  const char *lora_dev, *g3plc_dev;
   const char *speed_str = strdup("9600");
   struct hybrid_config hybrid = {
     .start_timer          = start_timer,
@@ -260,7 +300,7 @@ int main(int argc, char *argv[])
   };
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
-  int err;
+  int err, val;
 
   enum opt {
     OPT_COMMIT = 0x100,
@@ -282,14 +322,15 @@ int main(int argc, char *argv[])
     { "invalid", no_argument, NULL, 'i' },
     { "no-ack", no_argument, NULL, 'a' },
 
-    { "timeout", required_argument, NULL, 't' },
+    { "ack-timeout", required_argument, NULL, 't' },
+    { "cmd-timeout", required_argument, NULL, 'T' },
+    { "sifs", required_argument, NULL, 's' },
+    { "seqno", required_argument, NULL, 'S' },
     { "retransmissions", required_argument, NULL, 'r' },
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
 
     /* GPIO configuration */
-    { "irq", required_argument, NULL, OPT_IRQ },
-    { "cts", required_argument, NULL, OPT_CTS },
     { "reset", required_argument, NULL, OPT_RESET },
     { NULL, 0, NULL, 0 }
   };
@@ -298,7 +339,7 @@ int main(int argc, char *argv[])
      structure are merged from both
      the common options and the mode
      (stdio, ping, ...) options. */
-  char * optstring_merged    = strcat_dup("hVviat:r:B:d:", iface_mode.optstring);
+  char * optstring_merged    = strcat_dup("hVviat:T:s:S:r:B:d:", iface_mode.optstring);
   struct option *opts_merged = merge_opts(common_opts, iface_mode.long_opts);
 
   prog_name = basename(argv[0]);
@@ -335,10 +376,28 @@ int main(int argc, char *argv[])
       break;
     case 't':
       /* FIXME: should understand a time suffix */
+      hybrid.lora.timeout = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse timeout value");
+      break;
+    case 'T':
+      /* FIXME: should understand a time suffix */
       hybrid.g3plc.timeout = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
       break;
+    case 's':
+      hybrid.lora.sifs = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse SIFS value");
+      break;
+    case 'S':
+      val = xatou(optarg, &err);
+      if(err)
+        errx(EXIT_FAILURE, "cannot parse sequence number");
+      else if(val > 0xff)
+        errx(EXIT_FAILURE, "sequence number too large");
+      hybrid.lora.seqno = val;
     case 'r':
       hybrid.lora.retrans = hybrid.g3plc.retrans = xatou(optarg, &err);
       if(err)
@@ -371,13 +430,14 @@ int main(int argc, char *argv[])
   argc -= optind;
   argv += optind;
 
-  if(argc != 2) {
+  if(argc != 3) {
     print_help(prog_name, iface_mode.name, iface_mode.extra_messages);
     goto EXIT;
   }
 
   hybrid.mac_address = strtol(argv[0], NULL, 16);
-  device              = argv[1];
+  lora_dev           = argv[1];
+  g3plc_dev          = argv[2];
 
   exit_status = EXIT_SUCCESS;
 
@@ -386,10 +446,11 @@ int main(int argc, char *argv[])
                                    &hybrid,
                                    &ctx,
                                    ctx.dst_mac,
-                                   device,
+                                   lora_dev,
+                                   g3plc_dev,
                                    speed_str));
 
-  initialize_driver(&ctx, device, speed);
+  initialize_driver(&ctx, lora_dev, g3plc_dev, speed);
   iface_mode.init(&ctx, &hybrid);
 
   /* Block the SIGALRM signal so that it is
@@ -404,9 +465,7 @@ int main(int argc, char *argv[])
      the mode. */
   err = hybrid_init(&hybrid);
   if(err < 0)
-    errx(EXIT_FAILURE, "cannot initialize hybrid: %s",
-                       hybrid_init2str(err));
-
+    errx(EXIT_FAILURE, "cannot initialize hybrid");
 
   /* Start the threads that will handle the IO
      with the hybrid layer. That is:

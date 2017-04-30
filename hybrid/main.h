@@ -26,6 +26,7 @@
 #define _MAIN_H_
 
 #include <stdint.h>
+#include <termios.h>
 
 #define IF_VERBOSE(ctx, x) if((ctx)->verbose) x;
 
@@ -38,6 +39,12 @@ struct context {
 
   /* GPIO (negative means disabled) */
   int gpio_reset;
+
+  /* UART */
+  struct termios lora_tty;
+  int lora_uart_fd;
+  struct termios g3plc_tty;
+  int g3plc_uart_fd;
 };
 
 #endif /* _MAIN_H_ */
