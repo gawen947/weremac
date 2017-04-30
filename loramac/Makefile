@@ -21,7 +21,7 @@ UNIX_OBJ   = unix-mode.o $(COMMON_OBJ)
 PREFIX ?= /usr/local
 BIN    ?= /bin
 
-ifeq ($(OS),Linux)
+ifeq ($(shell uname),Linux)
 	CFLAGS  += -D_BSD_SOURCE=1
 	LDFLAGS += -lbsd
 endif

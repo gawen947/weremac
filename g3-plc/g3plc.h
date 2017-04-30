@@ -81,6 +81,13 @@ struct g3plc_config {
                     int status, void *data);
   } callbacks;
 
+  /* The driver will use those functions to start, stop and wait
+     for timers. The stop function should also drop any wait in
+     place on the timer. */
+  void (*start_timer)(unsigned int us);
+  void (*stop_timer)(void);
+  void (*wait_timer)(void);
+
   /* The driver will use the uart_send() function to write
      the resulting frame on the device's UART. This
      function should return a negative value in case of
@@ -131,6 +138,7 @@ struct g3plc_config {
   uint16_t mac_address; /* device short MAC address */
   uint64_t ext_address; /* extended 64-bit address */
   unsigned int retrans; /* maximum number of retransmissions */
+  unsigned int timeout; /* request timeout in us */
   unsigned long flags;  /* (see g3plc_flags) */
 
   void *data; /* context data passed to user callbacks */
