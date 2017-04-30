@@ -22,29 +22,46 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* This is the platform independent part of our hybrid driver
+   It does not have any code dependent on a specific platform
+   (such as S7G2, RPi or Linux), it's just pure C. */
+
 #ifndef _HYBRID_H_
 #define _HYBRID_H_
 
 #include <stdint.h>
 
 #define HYBRID_MAJOR 1
-#define HYBRID_MINOR 3
+#define HYBRID_MINOR 4
+
+/* When one of the child layers result in an error,
+   this error is reported in one of the two variables.
+   The error code returned by the hybrid layer specifies
+   if the LoRa MAC layer or G3PLC is at fault. */
+extern int lora_errno;
+extern int g3plc_errno;
 
 enum hybrid_flags {
   HYBRID_INVALID = 0x1, /* do not filter invalid packets (packet header, CRC) */
   HYBRID_NOACK   = 0x2, /* enable ACK communications */
 };
 
+enum hybrid_source {
+  HYBRID_SOURCE_LORA,  /* packet received from LoRa */
+  HYBRID_SOURCE_G3PLC, /* packet received from G3PLC */
+};
+
 struct hybrid_config {
   /* The driver will call cb_recv() when a frame has been
      received (frames may be filtered according to the
      loramac_flags). The status argument of this function reflect
-     the parsing status (see loramac_receive_status). It is also
-     possible to pass a context pointer to this callback. This
-     should be initialized in loramac_config. */
+     the parsing status (see *_receive_status). The physical interface
+     on which the packet was received is specified in source (see hybrid_source)
+     It is also possible to pass a context pointer to this callback. This
+     should be initialized in hybrid_config. */
   void (*cb_recv)(uint16_t src, uint16_t dst,
                   const void *payload, unsigned int payload_size,
-                  int status, void *data);
+                  int status, int source, void *data);
 
     /* The driver will use those functions to start, stop and wait
      for timers. The stop function should also drop any wait in
@@ -134,6 +151,7 @@ struct hybrid_config {
 
   unsigned long flags;   /* (see hybrid_flags) */
   uint16_t mac_address;  /* device short MAC address */
+  void *data;            /* context data passed to user callbacks */
 };
 
 /* Initialize the HYBRID driver (see hybrid_config).
