@@ -148,8 +148,8 @@ static int send_ack(uint16_t src, uint8_t seqno)
 {
   unsigned char *buf = snd_pktbuf;
 
-  *(uint8_t  *)buf = LORAMAC_ACK_SIZE; buf += sizeof(uint8_t);
-  *(uint16_t *)buf = src;              buf += sizeof(uint16_t);
+  *(uint8_t  *)buf = LORAMAC_ACK_SIZE;    buf += sizeof(uint8_t);
+  *(uint16_t *)buf = mac_conf.htons(src); buf += sizeof(uint16_t);
   *(uint8_t  *)buf = seqno;
 
   /* send packet */

@@ -106,7 +106,7 @@ struct loramac_config {
                   const void *payload, unsigned int payload_size,
                   int status, void *data);
 
-  /* The driver will use those two functions to start, stop and wait
+  /* The driver will use those functions to start, stop and wait
      for the ACK timer. The stop function should also drop any wait in
      place on the timer. */
   void (*start_timer)(unsigned int us);
