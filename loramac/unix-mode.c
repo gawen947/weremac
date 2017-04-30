@@ -52,26 +52,34 @@
 #define BUF_SIZE LORAMAC_MAX_FRAME
 
 static int sd;
-static const char *socket_path = PACKAGE ".sock";
+static const char *socket_driver_path = PACKAGE "-driver.sock";
+static const char *socket_app_path = PACKAGE "-app.sock";
+static struct sockaddr_un client;
+static socklen_t client_len;
 
 struct option unix_opts[] = {
-  { "path", required_argument, NULL, 'P' },
+  { "driver-path", required_argument, NULL, 'L' },
+  { "app-path", required_argument, NULL, 'R' },
   { NULL, 0, NULL, 0 }
 };
 struct opt_help unix_messages[] = {
-  { 'P', "path", "Unix socket path" },
+  { 'L', "driver-path", "Driver Unix socket path" },
+  { 'R', "app-path", "Application Unix socket path" },
   { 0, NULL, NULL }
 };
 
 static void exit_clean(void)
 {
-  unlink(socket_path);
+  unlink(socket_driver_path);
+  unlink(socket_app_path);
 }
 
 static void cb_recv(uint16_t src, uint16_t dst,
                     const void *payload, unsigned int payload_size,
                     int status, void *data)
 {
+  UNUSED(data);
+
   /* recv message format:
      [status (u8)][src (u16)][dst (u16)][payload] */
   unsigned char buf[BUF_SIZE];
@@ -85,7 +93,7 @@ static void cb_recv(uint16_t src, uint16_t dst,
 
   memcpy(b, payload, payload_size);
 
-  n = send(sd, buf, len, 0);
+  n = sendto(sd, buf, len, 0, (struct sockaddr *)&client, sizeof(struct sockaddr_un));
   if(n != (ssize_t)len)
     warn("network error"); /* we don't fail on client error */
 }
@@ -101,14 +109,18 @@ static void init(const struct context *ctx, struct loramac_config *loramac)
   sd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
 
   /* bind to the specified unix socket */
-  unlink(socket_path);
-  xstrcpy(s_addr.sun_path, socket_path, sizeof(s_addr.sun_path));
+  unlink(socket_driver_path);
+  xstrcpy(s_addr.sun_path, socket_driver_path, sizeof(s_addr.sun_path));
   xbind(sd, (struct sockaddr *)&s_addr, SUN_LEN(&s_addr));
+
+  /* prepare client address */
+  client.sun_family = AF_UNIX;
+  xstrcpy(client.sun_path, socket_app_path, sizeof(s_addr.sun_path));
 
   /* now we may register the exit function */
   atexit(exit_clean);
 
-  IF_VERBOSE(ctx, printf("Socket created at %s", socket_path));
+  IF_VERBOSE(ctx, printf("Socket created at %s", socket_driver_path));
 }
 
 static void start(const struct context *ctx)
@@ -158,8 +170,11 @@ static int parse_option(const struct context *ctx, int c)
   UNUSED(ctx);
 
   switch(c) {
-  case 'P':
-    socket_path = optarg;
+  case 'L':
+    socket_driver_path = optarg;
+    return 1;
+  case 'R':
+    socket_app_path = optarg;
     return 1;
   }
 
@@ -170,7 +185,7 @@ struct iface_mode iface_mode = {
   .name = "unix",
   .description = "Read and write frame on a Unix socket",
 
-  .optstring      = "P:",
+  .optstring      = "R:L:",
   .long_opts      = unix_opts,
   .extra_messages = unix_messages,
   .parse_option   = parse_option,
