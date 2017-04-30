@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 #include "g3plc-cmd.h"
+#include "dissector.h"
 #include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2

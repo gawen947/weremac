@@ -55,7 +55,7 @@ static int sd;
 static const char *socket_path = PACKAGE ".sock";
 
 struct option unix_opts[] = {
-  { "path", required_argument, NULL, 'T' },
+  { "path", required_argument, NULL, 'P' },
   { NULL, 0, NULL, 0 }
 };
 struct opt_help unix_messages[] = {
