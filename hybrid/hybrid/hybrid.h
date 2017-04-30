@@ -27,9 +27,12 @@
 
 #include <stdint.h>
 
+#define HYBRID_MAJOR 1
+#define HYBRID_MINOR 3
+
 enum hybrid_flags {
-  G3PLC_INVALID = 0x1, /* do not filter invalid packets (packet header, CRC) */
-  G3PLC_NOACK   = 0x2, /* enable ACK communications */
+  HYBRID_INVALID = 0x1, /* do not filter invalid packets (packet header, CRC) */
+  HYBRID_NOACK   = 0x2, /* enable ACK communications */
 };
 
 struct hybrid_config {
@@ -54,13 +57,14 @@ struct hybrid_config {
      the resulting frame on the device's UART. This
      function should return a negative value in case of
      error or 0 on success. */
-  int (*uart_send)(const void *buf, unsigned int size);
+  int (*uart_lora_send)(const void *buf, unsigned int size);
+  int (*uart_g3plc_send)(const void *buf, unsigned int size);
 
   /* The g3plc_reset() function will use this to read
      from the device during the boot sequence. This
      function should return a negative value in case of
      error or 0 on success. */
-  int (*uart_read)(void *buf, unsigned int size);
+  int (*uart_g3plc_read)(void *buf, unsigned int size);
 
   /* We only send one packet at a time. We are forced to do
      this unless we can start multiple referenced timers
@@ -80,16 +84,17 @@ struct hybrid_config {
        - 500k
        - 115.2k
      and return a negative number on error. */
-  int (*set_uart_speed)(unsigned int speed);
+  int (*set_uart_g3plc_speed)(unsigned int speed);
 
-  /* The function g3plc_uart_putc() is generally called
+  /* The function *_uart_putc() is generally called
      from an interrupt handler. Since we cannot parse
      the frame in this handler, we defer processing when
      a complete frame has been received. Control is then
      transferred to this function which can either directly
-     be g3plc_recv_frame() or use semaphores to defer
+     be hybrid_recv_frame() or use semaphores to defer
      outside of the interrupt context. */
-  int (*recv_frame)(void);
+  int (*lora_recv_frame)(void);
+  int (*g3plc_recv_frame)(void);
 
   /* Clear/set the reset pin. */
   void (*reset_clear)(void);
@@ -131,20 +136,21 @@ struct hybrid_config {
   uint16_t mac_address;  /* device short MAC address */
 };
 
-/* Initialize the G3PLC driver (see g3plc_config).
-   Return 0 on success, for other errror codes see g3plc_init_status. */
+/* Initialize the HYBRID driver (see hybrid_config).
+   Return 0 on success, for other errror codes see hybrid_init_status. */
 int hybrid_init(const struct hybrid_config *conf);
 
-/* Assemble and send a frame to the specified destination using G3PLC.
+/* Assemble and send a frame to the specified destination using HYBRID.
    When ACK is enabled, this function will block until the packet has
-   been successfully transmitted. For the error see g3plc_send_status.
+   been successfully transmitted. For the error see hybrid_send_status.
    If the tx pointer is not null, it is replaced with the number of
    transmissions necessary to succesfully send the packet. */
 int hybrid_send(uint16_t dst, const void *payload, unsigned int payload_size);
 
 /* Start the processing of a frame. Can be called either automatically
    when a complete frame has been received or manually from another thread. */
-int hybrid_recv_frame(void);
+int hybrid_lora_recv_frame(void);
+int hybrid_g3plc_recv_frame(void);
 
 /* Called by the platform dependent part of the driver when a character
    has been received on UART from the device. This function can block
@@ -152,6 +158,7 @@ int hybrid_recv_frame(void);
    if the receive callback itself is blocked. Note that this function
    is *NOT* reentrant. You have to wait for its completion until you
    can call it again. */
-int hybrid_uart_putc(unsigned char c);
+int hybrid_lora_uart_putc(unsigned char c);
+int hybrid_g3plc_uart_putc(unsigned char c);
 
 #endif /* _HYBRID_H_ */
