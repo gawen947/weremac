@@ -23,6 +23,7 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "firmware.h"
@@ -45,6 +46,11 @@
       return n;              \
   } while(0)
 
+/* Used in conjunction with the dissector
+   to synchronize request/confirm. */
+static uint32_t waited_cmd_literal;
+static unsigned char *waited_cmd_data;
+
 /* G3PLC configuration with platform dependent functions,
    source mac address, callbacks and flags. */
 static struct g3plc_config g3plc_conf;
@@ -56,6 +62,11 @@ static unsigned int rcv_size;
 static uint64_t htonll(uint64_t v)
 {
   return ((uint64_t)g3plc_conf.htonl(v & 0xffffffff) << 32) | g3plc_conf.htonl(v >> 32);
+}
+
+static uint64_t ntohll(uint64_t v)
+{
+  return ((uint64_t)g3plc_conf.ntohl(v & 0xffffffff) << 32) | g3plc_conf.ntohl(v >> 32);
 }
 
 static int g3_init_request(uint16_t neighbour,  /* number of neighbour table */
@@ -235,10 +246,33 @@ int g3plc_command(struct g3plc_cmd *cmd, unsigned int size)
   return g3plc_conf.uart_send(snd_cmdbuf_packed, size);       /* send command */
 }
 
-int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx)
+const unsigned char * wait_for_cmd(uint32_t cmd_literal)
 {
-  struct g3plc_cmd *cmd = (struct g3plc_cmd *)snd_cmdbuf;
-  unsigned char    *dat = cmd->data;
+  /* fail if previous wait was not freed correctly */
+  if(waited_cmd_data)
+    return NULL;
+
+  waited_cmd_literal = cmd_literal;
+
+  g3plc_conf.start_timer(g3plc_conf.timeout);
+  g3plc_conf.wait_timer();
+
+  return waited_cmd_data;
+}
+
+void free_cmd_data(void)
+{
+  free(waited_cmd_data);
+  waited_cmd_data    = NULL;
+  waited_cmd_literal = 0;
+}
+
+int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size)
+{
+  struct g3plc_cmd    *cmd = (struct g3plc_cmd *)snd_cmdbuf;
+  unsigned char       *dat = cmd->data;
+  const unsigned char *confirmation;
+  int status;
 
   *cmd = (struct g3plc_cmd){
     .reserved = 0,
@@ -287,7 +321,99 @@ int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size, uns
   dat += payload_size;
 
   /* send command to device */
-  return g3plc_command(cmd, dat - snd_cmdbuf);
+  x_(status, g3plc_command, cmd, dat - snd_cmdbuf);
+
+  confirmation = wait_for_cmd(G3PLC_MCPS_DATA_CONFIRM);
+  if(!confirmation)
+    return G3PLC_SND_CONFIRM;
+  status = confirmation[1];
+
+  free_cmd_data();
+
+  switch(status) {
+  case R_G3MAC_STATUS_SUCCESS:
+    return G3PLC_SND_SUCCESS;
+  case R_G3MAC_STATUS_CHANNEL_ACCESS_FAILURE:
+    return G3PLC_SND_ACCESS;
+  case R_G3MAC_STATUS_FRAME_TOO_LONG:
+    return G3PLC_SND_TOOLONG;
+  case R_G3MAC_STATUS_INVALID_PARAMETER:
+    return G3PLC_SND_INVALID_PARAM;
+  case R_G3MAC_STATUS_OUT_OF_CAP:
+    return G3PLC_SND_OOM;
+  case R_G3MAC_STATUS_NO_ACK:
+    return G3PLC_SND_NOACK;
+  default:
+    return G3PLC_SND_FAILURE;
+  }
+}
+
+static int mcps_data_indication(const unsigned char *data,
+                                unsigned int size)
+{
+  static struct g3plc_data_hdr hdr;
+  const unsigned char *d = data;
+  const unsigned char *payload;
+  unsigned int len;
+
+  memset(&hdr, 0, sizeof(struct g3plc_data_hdr));
+
+  if(size < 24)
+    return G3PLC_RCV_INVALID_HDR;
+  size -= 24;
+
+  /* source */
+  hdr.src_mode  = *(uint8_t *)d; d += sizeof(uint8_t);
+  hdr.src_pan   = g3plc_conf.ntohs(*(uint16_t *)d); d += sizeof(uint16_t);
+  hdr.src_addr  = ntohll(*(uint64_t *)d); d += sizeof(uint64_t);
+
+  /* destination */
+  hdr.dst_mode  = *(uint8_t *)d; d += sizeof(uint8_t);
+  hdr.dst_pan   = g3plc_conf.ntohs(*(uint16_t *)d); d += sizeof(uint16_t);
+  hdr.dst_addr  = ntohll(*(uint64_t *)d); d += sizeof(uint64_t);
+
+  /* MSDU length */
+  len = g3plc_conf.ntohs(*(uint16_t *)d); d += sizeof(uint16_t);
+
+  if(size < len)
+    return G3PLC_RCV_INVALID_HDR;
+  size -= len;
+
+  payload = d;
+
+  /* remaining fields are ignored for now */
+
+  /* call cb_recv */
+  CB(cb_recv, &hdr, payload, len, G3PLC_RCV_SUCCESS, g3plc_conf.data);
+  return G3PLC_RCV_SUCCESS;
+}
+
+int dissector(const struct g3plc_cmd *cmd, unsigned int size)
+{
+  uint32_t literal_cmd = LITERAL_G3PLC_CMD(*cmd);
+
+  /* we are generally only interested in the command data size */
+  size -= sizeof(struct g3plc_cmd);
+
+  /* check for any waited confirmation/indication */
+  if(literal_cmd == waited_cmd_literal) {
+    waited_cmd_literal = 0;
+
+    /* we always duplicate the data to avoid side effect */
+    waited_cmd_data = malloc(size);
+    memcpy(waited_cmd_data, cmd->data, size);
+
+    g3plc_conf.stop_timer();
+  }
+
+  /* parse command packets */
+  switch(literal_cmd) {
+  case G3PLC_MCPS_DATA_INDICATION:
+    return mcps_data_indication(cmd->data, size);
+  }
+
+  /* ignore anything else */
+  return G3PLC_RCV_IGNORED;
 }
 
 int g3plc_recv_frame(void)
@@ -326,7 +452,7 @@ PARSING_COMPLETE:
   CB(raw, cmd, size, status, g3plc_conf.data);
 
   if(status == G3PLC_RCV_SUCCESS)
-    status = dissector(&g3plc_conf, cmd, size);
+    status = dissector(cmd, size);
   return status;
 }
 

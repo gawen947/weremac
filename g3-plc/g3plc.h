@@ -33,11 +33,10 @@
 #include <stdint.h>
 
 #include "g3plc-cmd.h"
-#include "dissector.h"
 #include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2
-#define G3PLC_MINOR 1
+#define G3PLC_MINOR 2
 
 #define G3PLC_DATA_HDR_SIZE 28 /* see G3-PLC Serial Command Spec. p51 */
 #define G3PLC_MAX_PAYLOAD   G3PLC_MAX_CMD - G3PLC_DATA_HDR_SIZE - sizeof(struct g3plc_cmd)
@@ -56,6 +55,7 @@ enum g3plc_init_status {
 /* Status of a received frame/command */
 enum g3plc_receive_status {
   G3PLC_RCV_SUCCESS,
+  G3PLC_RCV_IGNORED,     /* frame ignored or not supported */
   G3PLC_RCV_CONT,        /* no frame were parsed (need more data) */
   G3PLC_RCV_INVALID_CRC, /* CRC does not match received command */
   G3PLC_RCV_INVALID_HDR, /* invalid command header (too short) */
@@ -68,6 +68,33 @@ enum g3plc_send_status {
   G3PLC_SND_INVALID_HDR,   /* invalid command header (too short) */
   G3PLC_SND_TOOLONG,       /* payload too long */
   G3PLC_SND_NOACK,         /* maximum number of retransmissions reached */
+  G3PLC_SND_CONFIRM,       /* cannot confirm transmission */
+  G3PLC_SND_ACCESS,        /* did not transmit because of activity on the channel */
+  G3PLC_SND_OOM,           /* out of memory in internal buffer */
+  G3PLC_SND_FAILURE,       /* (any other reason) */
+};
+
+/* Information about a received data frame */
+struct g3plc_data_hdr {
+  uint8_t  src_mode;    /* source address mode */
+  uint16_t src_pan;     /* source PAN ID */
+  uint64_t src_addr;    /* source short address */
+
+  uint8_t  dst_mode;    /* destination address mode */
+  uint16_t dst_pan;     /* destination PAN ID */
+  uint64_t dst_addr;    /* destination short address */
+
+  uint8_t  handle;      /* handle associated to MSDU */
+  uint8_t  seqno;       /* sequence number */
+  uint32_t time;        /* time, in symbols, at which the data were transmitted */
+
+  uint8_t  sec_level;   /* security level */
+  uint8_t  key_id_mode; /* key identification mode */
+  uint64_t key_source;  /* (not used) */
+  uint8_t  key_index;   /* key index */
+  uint8_t  QoS;         /* Quality of Service */
+  uint8_t  estimated;   /* ? */
+  uint32_t tonemap;     /* estimated tonemap */
 };
 
 struct g3plc_config {
@@ -77,7 +104,7 @@ struct g3plc_config {
        This is useful for user that wants to implement their own dissector. */
     void (*raw)(const struct g3plc_cmd *cmd, unsigned int size, int status, void *data);
 
-    void (*cb_recv)(uint16_t src, uint16_t dst,
+    void (*cb_recv)(const struct g3plc_data_hdr *hdr,
                     const void *payload, unsigned payload_size,
                     int status, void *data);
   } callbacks;
@@ -159,7 +186,7 @@ int g3plc_command(struct g3plc_cmd *cmd, unsigned int size);
    been successfully transmitted. For the error see g3plc_send_status.
    If the tx pointer is not null, it is replaced with the number of
    transmissions necessary to succesfully send the packet. */
-int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size, unsigned int *tx);
+int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size);
 
 /* Start the processing of a frame. Can be called either automatically
    when a complete frame has been received or manually from another thread. */

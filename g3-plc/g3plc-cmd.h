@@ -227,6 +227,25 @@ enum g3plc_attr {
   G3PLC_ATTR_SHORTADDR = 0x0053, /* short address */
 };
 
+/* MAC status code */
+enum g3plc_mac_status {
+  R_G3MAC_STATUS_SUCCESS                = 0x00,
+  R_G3MAC_STATUS_COUNTER_ERROR          = 0xdb,
+  R_G3MAC_STATUS_UNSUPPORTED_SECURITY   = 0xdf,
+  R_G3MAC_STATUS_CHANNEL_ACCESS_FAILURE = 0xe1,
+  R_G3MAC_STATUS_SECURITY_ERROR         = 0xe4,
+  R_G3MAC_STATUS_FRAME_TOO_LONG         = 0xe5,
+  R_G3MAC_STATUS_INVALID_PARAMETER      = 0xe8,
+  R_G3MAC_STATUS_NO_ACK                 = 0xe9,
+  R_G3MAC_STATUS_OUT_OF_CAP             = 0xed,
+  R_G3MAC_STATUS_INVALID_STATE          = 0xfd,
+  R_G3MAC_STATUS_UNAVAILABLE_KEY        = 0xf3,
+  R_G3MAC_STATUS_LML_NO_RESPONSE        = 0xce,
+  R_G3MAC_STATUS_LML_ABORTED            = 0xc0,
+  R_G3MAC_STATUS_LML_ABORT_ERROR        = 0xcd,
+};
+
+
 /* Convert a command structure into a literal.
    This is useful for defining common command as literals
    that we can use in switch cases such as the dissector. */
