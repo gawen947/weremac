@@ -38,6 +38,7 @@
 #include <err.h>
 
 #include "hybrid/hybrid.h"
+#include "hybrid/hybrid-str.h"
 #include "g3plc/g3plc.h"
 #include "string-utils.h"
 #include "rpi-gpio.h"
