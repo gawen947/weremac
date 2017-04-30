@@ -33,7 +33,7 @@
 
 #include "safe-call.h"
 #include "string-utils.h"
-#include "loramac-str.h"
+#include "g3plc-str.h"
 #include "g3-plc/g3plc.h"
 #include "version.h"
 #include "common.h"
@@ -97,12 +97,12 @@ static void cb_recv(uint16_t src, uint16_t dst,
     warn("network error"); /* we don't fail on client error */
 }
 
-static void init(const struct context *ctx, struct g3plc_config *loramac)
+static void init(const struct context *ctx, struct g3plc_config *g3plc)
 {
   struct sockaddr_un s_addr = { .sun_family = AF_UNIX };
 
   /* configure the LoRaMAC layer */
-  loramac->cb_recv = cb_recv;
+  g3plc->cb_recv = cb_recv;
 
   /* create socket */
   sd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
@@ -147,11 +147,11 @@ static void start(const struct context *ctx)
 
     IF_VERBOSE(ctx, printf("Sending %d bytes to %04X\n",
                            n - (int)sizeof(uint16_t), dst));
-    ret = loramac_send(dst,
+    ret = g3plc_send(dst,
                        buf + sizeof(uint16_t),
                        n   - sizeof(uint16_t),
                        &tx);
-    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret));
+    IF_VERBOSE(ctx, printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret));
     IF_VERBOSE(ctx, printf("TX COUNT : %d\n", tx));
     IF_VERBOSE(ctx, printf("---------\n"));
   }

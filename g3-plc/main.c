@@ -129,7 +129,7 @@ static void * input_thread_func(void *p)
 }
 
 static void start_io_threads(const struct context *ctx,
-                             const struct g3plc_config *loramac)
+                             const struct g3plc_config *g3plc)
 {
   pthread_t output_thread, input_thread;
   int err;
@@ -137,7 +137,7 @@ static void start_io_threads(const struct context *ctx,
   struct io_thread_data data = (struct io_thread_data){
     .mode   = &iface_mode,
     .ctx    = ctx,
-    .config = loramac
+    .config = g3plc
   };
 
   thread_block_signals();
@@ -184,7 +184,7 @@ static void display_summary(const struct iface_mode *mode,
   printf(" flags                     : 0x%08lx\n", conf->flags);
   for(flag = 0x1 ; flag <= LORAMAC_NOACK ; flag <<= 1) {
     if(conf->flags & flag)
-      printf("  - %s\n", loramac_flag2str(flag));
+      printf("  - %s\n", g3plc_flag2str(flag));
   }
 }
 
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     .interval   = 200,
     .flood      = 0
   };
-  struct g3plc_config loramac = {
+  struct g3plc_config g3plc = {
     .uart_send   = uart_send,
     .start_timer = start_timer,
     .stop_timer  = stop_timer,
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     .unlock      = unlock,
     .htons       = htons,
     .ntohs       = ntohs,
-    .recv_frame  = loramac_recv_frame,
+    .recv_frame  = g3plc_recv_frame,
     .seqno       = rnd_seqno(),
     .retrans     = 3,
     .timeout     = 4000000, /* 4 seconds */
@@ -341,28 +341,28 @@ int main(int argc, char *argv[])
       ctx.verbose = 1;
       break;
     case 'p':
-      loramac.flags |= LORAMAC_PROMISCUOUS;
+      g3plc.flags |= LORAMAC_PROMISCUOUS;
       break;
     case 'i':
-      loramac.flags |= LORAMAC_INVALID;
+      g3plc.flags |= LORAMAC_INVALID;
       break;
     case 'b':
-      loramac.flags |= LORAMAC_NOBROADCAST;
+      g3plc.flags |= LORAMAC_NOBROADCAST;
       break;
     case 'a':
-      loramac.flags |= LORAMAC_NOACK;
+      g3plc.flags |= LORAMAC_NOACK;
       break;
     case 'd':
       ctx.dst_mac = strtol(optarg, NULL, 16);
       break;
     case 't':
       /* FIXME: should understand a time suffix */
-      loramac.timeout = xatou(optarg, &err);
+      g3plc.timeout = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse timeout value");
       break;
     case 's':
-      loramac.sifs = xatou(optarg, &err);
+      g3plc.sifs = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse SIFS value");
       break;
@@ -372,12 +372,12 @@ int main(int argc, char *argv[])
         errx(EXIT_FAILURE, "cannot parse sequence number");
       else if(val > 0xff)
         errx(EXIT_FAILURE, "sequence number too large");
-      loramac.seqno = val;
+      g3plc.seqno = val;
     case 'r':
-      loramac.retrans = xatou(optarg, &err);
+      g3plc.retrans = xatou(optarg, &err);
       if(err)
         errx(EXIT_FAILURE, "cannot parse retransmissions value");
-      if(loramac.retrans < 1)
+      if(g3plc.retrans < 1)
         errx(EXIT_FAILURE, "invalid number of retransmissions");
       break;
     case 'B':
@@ -410,21 +410,21 @@ int main(int argc, char *argv[])
     goto EXIT;
   }
 
-  loramac.mac_address = strtol(argv[0], NULL, 16);
+  g3plc.mac_address = strtol(argv[0], NULL, 16);
   device              = argv[1];
 
   exit_status = EXIT_SUCCESS;
 
   /* display summary */
   IF_VERBOSE(&ctx, display_summary(&iface_mode,
-                                   &loramac,
+                                   &g3plc,
                                    &ctx,
                                    ctx.dst_mac,
                                    device,
                                    speed_str));
 
   initialize_driver(&ctx, device, speed);
-  iface_mode.init(&ctx, &loramac);
+  iface_mode.init(&ctx, &g3plc);
 
   /* Block the SIGALRM signal so that it is
      not received by the main thread when
@@ -433,20 +433,20 @@ int main(int argc, char *argv[])
 
   /* Initialize LoRaMAC layer.
      The interface mode still has to configure
-     the loramac configuration structure. That
+     the g3plc configuration structure. That
      is why we initialize the MAC layer after
      the mode. */
-  err = loramac_init(&loramac);
+  err = g3plc_init(&g3plc);
   if(err < 0)
     errx(EXIT_FAILURE, "cannot initialize LoRaMAC: %s",
-                       loramac_init2str(err));
+                       g3plc_init2str(err));
 
 
   /* Start the threads that will handle the IO
      with the LoRaMAC layer. That is:
        - The input thread that read new messages from UART.
        - The output thread that send message according to iface_mode. */
-  start_io_threads(&ctx, &loramac);
+  start_io_threads(&ctx, &g3plc);
 
   /* IO threads returned, this is the end.
      We can release everything. */

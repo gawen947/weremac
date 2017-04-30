@@ -92,7 +92,7 @@ const char * loramac_send2str(enum loramac_send_status status)
   }
 }
 
-enum loramac_flags lormac_str2flag(const char *s)
+enum loramac_flags loramac_str2flag(const char *s)
 {
   if(!strcmp("promiscuous", s))
     return LORAMAC_PROMISCUOUS;

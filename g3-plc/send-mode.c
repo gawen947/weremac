@@ -33,7 +33,7 @@
 #include <time.h>
 
 #include "time-substract.h"
-#include "loramac-str.h"
+#include "g3plc-str.h"
 #include "scale.h"
 #include "mode.h"
 #include "help.h"
@@ -56,10 +56,10 @@ static void cb_recv(uint16_t src, uint16_t dst,
   UNUSED(data);
 }
 
-static void init(const struct context *ctx, struct g3plc_config *loramac)
+static void init(const struct context *ctx, struct g3plc_config *g3plc)
 {
   UNUSED(ctx);
-  loramac->cb_recv = cb_recv;
+  g3plc->cb_recv = cb_recv;
 }
 
 static void start(const struct context *ctx)
@@ -72,7 +72,7 @@ static void start(const struct context *ctx)
   UNUSED(ctx);
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-  ret = loramac_send(ctx->dst_mac, message, strlen(message), &tx);
+  ret = g3plc_send(ctx->dst_mac, message, strlen(message), &tx);
   clock_gettime(CLOCK_MONOTONIC, &end);
 
   nsec = substract_nsec(&begin, &end);
@@ -80,7 +80,7 @@ static void start(const struct context *ctx)
   putchar('\n');
   if(display_time)
     printf("TIME     : %s\n", scale_time(nsec));
-  printf("TX STATUS: %s (%d)\n", loramac_send2str(ret), ret);
+  printf("TX STATUS: %s (%d)\n", g3plc_send2str(ret), ret);
   printf("TX COUNT : %d\n", tx);
 }
 

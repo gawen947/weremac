@@ -137,6 +137,6 @@ void uart_read_loop(void)
 
     /* flush buffer */
     for(i = 0 ; i < size ; i++)
-      loramac_uart_putc(buf[i]);
+      g3plc_uart_putc(buf[i]);
   }
 }
