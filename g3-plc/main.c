@@ -52,6 +52,13 @@
 #include "help.h"
 #include "main.h"
 
+/* FIXME: avoid global */
+struct context ctx = {
+  .verbose    = 0,
+  .dst_mac    = 0xffff,
+  .gpio_reset = -1,
+};
+
 struct io_thread_data {
   const struct iface_mode     *mode;
   const struct context        *ctx;
@@ -65,6 +72,16 @@ static void configure_gpio(const struct context *ctx)
 
   rpi_gpio_init();
   rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+}
+
+static void reset_clear(void)
+{
+  rpi_gpio_clr(ctx.gpio_reset);
+}
+
+static void reset_set(void)
+{
+  rpi_gpio_set(ctx.gpio_reset);
 }
 
 static void initialize_driver(const struct context *ctx,
@@ -200,11 +217,6 @@ int main(int argc, char *argv[])
   const char *prog_name;
   const char *device;
   const char *speed_str = strdup("9600");
-  struct context ctx = {
-    .verbose    = 0,
-    .dst_mac    = 0xffff,
-    .gpio_reset = -1,
-  };
   struct g3plc_config g3plc = {
     .callbacks = {
       .raw     = NULL,
@@ -217,6 +229,8 @@ int main(int argc, char *argv[])
     .start_timer    = start_timer,
     .stop_timer     = stop_timer,
     .wait_timer     = wait_timer,
+    .reset_clear    = reset_clear,
+    .reset_set      = reset_set,
     .htons          = htons,
     .ntohs          = ntohs,
     .htonl          = htonl,
