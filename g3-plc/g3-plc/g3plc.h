@@ -36,7 +36,7 @@
 #include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2
-#define G3PLC_MINOR 2
+#define G3PLC_MINOR 3
 
 #define G3PLC_DATA_HDR_SIZE 28 /* see G3-PLC Serial Command Spec. p51 */
 #define G3PLC_MAX_PAYLOAD   G3PLC_MAX_CMD - G3PLC_DATA_HDR_SIZE - sizeof(struct g3plc_cmd)
