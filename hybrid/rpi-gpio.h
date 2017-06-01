@@ -27,8 +27,8 @@
    other OS. */
 
 enum rpi_gpio_mode {
-  RPI_GPIO_OUT  = 0x0,
-  RPI_GPIO_IN   = 0x1,
+  RPI_GPIO_IN   = 0x0,
+  RPI_GPIO_OUT  = 0x1,
   RPI_GPIO_ALT0 = 0x4,
   RPI_GPIO_ALT1 = 0x5,
   RPI_GPIO_ALT2 = 0x6,
