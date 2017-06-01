@@ -72,6 +72,7 @@ static void configure_gpio(const struct context *ctx)
 
   rpi_gpio_init();
   rpi_gpio_set_mode(ctx->gpio_reset, RPI_GPIO_OUT);
+  rpi_gpio_set(ctx->gpio_reset); /* set high for low pulse */
 }
 
 static void reset_clear(void)
