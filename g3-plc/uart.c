@@ -50,6 +50,8 @@ static speed_t int2baud(int speed)
     int     intval;
     speed_t baud;
   } *b, bauds[] = {
+    { 921600, B921600 },
+    { 460800, B460800 },
     { 230400, B230400 },
     { 115200, B115200 },
     { 57600, B57600 },

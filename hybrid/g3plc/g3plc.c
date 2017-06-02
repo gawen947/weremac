@@ -584,9 +584,9 @@ int g3plc_reset(void)
   /* switch to 1M/500k baudrate */
   xwait_for_byte(n, 0xa1);     /* baud rate change request */
   xsend_byte(n, 0xc1);         /* baud rate change command */
-  xsend_byte(n, 0xc9);         /* baud rate (boot 1M / appl. 500k) */
+  xsend_byte(n, 0x88);         /* baud rate (boot 461k / appl. 461k) */
   xwait_for_byte(n, 0xcf);     /* baud rate change accept */
-  xset_uart_speed(n, 1000000); /* switch to boot baudrate */
+  xset_uart_speed(n, 460800);  /* switch to boot baudrate */
   xsend_byte(n, 0xaa);         /* baud rate change response */
 
   /* send remaining segments */
@@ -608,8 +608,6 @@ int g3plc_reset(void)
     else
       return G3PLC_INIT_BOOT_ERROR;
   }
-
-  xset_uart_speed(n, 500000); /* switch to application baudrate */
 
   return G3PLC_INIT_SUCCESS;
 }
