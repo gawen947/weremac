@@ -555,7 +555,8 @@ static int send_segment(unsigned int segno)
     if(n < 0)
       return n;
 
-    size -= write_size;
+    offset += write_size;
+    size   -= write_size;
   }
 
   return 0;
