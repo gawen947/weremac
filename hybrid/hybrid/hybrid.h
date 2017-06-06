@@ -138,6 +138,11 @@ struct hybrid_config {
   /* Microseconds sleep. */
   void (*usleep)(unsigned long us);
 
+  /* Signal progress in the G3-PLC boot sequence. */
+  void (*g3plc_boot_start)(void);
+  void (*g3plc_boot_progress)(void);
+  void (*g3plc_boot_end)(void);
+
   /* LoRaMAC options */
   struct lora_opt {
     /* Initial sequence number.

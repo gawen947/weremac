@@ -36,7 +36,7 @@
 #include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2
-#define G3PLC_MINOR 2
+#define G3PLC_MINOR 3
 
 #define G3PLC_DATA_HDR_SIZE 28 /* see G3-PLC Serial Command Spec. p51 */
 #define G3PLC_MAX_PAYLOAD   G3PLC_MAX_CMD - G3PLC_DATA_HDR_SIZE - sizeof(struct g3plc_cmd)
@@ -137,7 +137,6 @@ struct g3plc_config {
      and return a negative number on error. */
   int (*set_uart_speed)(unsigned int speed);
 
-
   /* The function g3plc_uart_putc() is generally called
      from an interrupt handler. Since we cannot parse
      the frame in this handler, we defer processing when
@@ -160,6 +159,11 @@ struct g3plc_config {
 
   /* Microseconds sleep. */
   void (*usleep)(unsigned long us);
+
+  /* Signal progress in the boot sequence. */
+  void (*boot_start)(void);
+  void (*boot_progress)(void);
+  void (*boot_end)(void);
 
   uint8_t bandplan;     /* bandplan (see g3plc_bandplan) */
   uint16_t pan_id;      /* PAN ID */

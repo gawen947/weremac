@@ -38,6 +38,9 @@
 /* Check that callbacks are configured before calling them. */
 #define CB(cb, ...) if(g3plc_conf.callbacks.cb) g3plc_conf.callbacks.cb(__VA_ARGS__)
 
+/* Boot progress. */
+#define BPRG() if(g3plc_conf.boot_progress) g3plc_conf.boot_progress()
+
 /* Check the return value of the function.
    Exit with its error when it is different than success. */
 #define x_(n, fun, ...) do { \
@@ -546,6 +549,7 @@ static int send_segment(unsigned int segno)
   n = g3plc_conf.uart_send(info_tbl + sizeof(uint32_t), 12);
   if(n < 0)
     return n;
+  BPRG();
 
   /* send segment */
   while(size) {
@@ -554,6 +558,7 @@ static int send_segment(unsigned int segno)
     n = g3plc_conf.uart_send(frmw_tbl + offset, write_size);
     if(n < 0)
       return n;
+    BPRG();
 
     offset += write_size;
     size   -= write_size;
@@ -571,24 +576,29 @@ int g3plc_reset(void)
 {
   int n;
 
+  if(g3plc_conf.boot_start)
+    g3plc_conf.boot_start();
+
   /* speed for segment 0 */
   xset_uart_speed(n, 115200);
+  BPRG();
 
   /* hardware reset */
   g3plc_conf.reset_clear();
   g3plc_conf.usleep(30000); /* sleep 30ms */
   g3plc_conf.reset_set();
+  BPRG();
 
-  xwait_for_byte(n, 0x80); /* program transmission request */
-  xsend_segment(n, 0);     /* send segment 0 */
+  xwait_for_byte(n, 0x80); BPRG(); /* program transmission request */
+  xsend_segment(n, 0);     BPRG(); /* send segment 0 */
 
   /* switch to 1M/500k baudrate */
-  xwait_for_byte(n, 0xa1);     /* baud rate change request */
-  xsend_byte(n, 0xc1);         /* baud rate change command */
-  xsend_byte(n, 0x88);         /* baud rate (boot 461k / appl. 461k) */
-  xwait_for_byte(n, 0xcf);     /* baud rate change accept */
-  xset_uart_speed(n, 460800);  /* switch to boot baudrate */
-  xsend_byte(n, 0xaa);         /* baud rate change response */
+  xwait_for_byte(n, 0xa1);    BPRG(); /* baud rate change request */
+  xsend_byte(n, 0xc1);        BPRG(); /* baud rate change command */
+  xsend_byte(n, 0x88);        BPRG(); /* baud rate (boot 461k / appl. 461k) */
+  xwait_for_byte(n, 0xcf);    BPRG(); /* baud rate change accept */
+  xset_uart_speed(n, 460800); BPRG(); /* switch to boot baudrate */
+  xsend_byte(n, 0xaa);        BPRG(); /* baud rate change response */
 
   /* send remaining segments */
   while(1) {
@@ -598,6 +608,7 @@ int g3plc_reset(void)
     n = g3plc_conf.uart_read(&buf, 1);
     if(n < 0)
       return n;
+    BPRG();
 
     segno = buf & 0x0f;
 
@@ -609,6 +620,9 @@ int g3plc_reset(void)
     else
       return G3PLC_INIT_BOOT_ERROR;
   }
+
+  if(g3plc_conf.boot_end)
+    g3plc_conf.boot_end();
 
   return G3PLC_INIT_SUCCESS;
 }

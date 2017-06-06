@@ -158,6 +158,27 @@ static void usleep_UL(unsigned long duration)
   usleep(duration);
 }
 
+static void boot_start(void)
+{
+  printf("\n");
+}
+
+static void boot_progress(void)
+{
+  static char progress[] = "\\|/-";
+  static unsigned int idx;
+
+  printf("\rBoot G3-PLC... [%c]", progress[idx]);
+  fflush(stdout);
+
+  idx = (idx + 1) % sizeof(progress);
+}
+
+static void boot_end(void)
+{
+  printf("\rBoot G3-PLC... done!\n");
+}
+
 /* Display a summary of the MAC layer configuration. */
 static void display_summary(const struct iface_mode *mode,
                             const struct g3plc_config *conf,
@@ -237,6 +258,9 @@ int main(int argc, char *argv[])
     .htonl          = htonl,
     .ntohl          = ntohl,
     .usleep         = usleep_UL,
+    .boot_start     = boot_start,
+    .boot_progress  = boot_progress,
+    .boot_end       = boot_end,
     .recv_frame     = g3plc_recv_frame,
     .bandplan       = G3PLC_BP_CENELEC_A, /* FIXME: option */
     .pan_id         = 0xAAAA,             /* FIXME: option */

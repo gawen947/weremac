@@ -193,6 +193,28 @@ static void usleep_UL(unsigned long duration)
   usleep(duration);
 }
 
+static void g3plc_boot_start(void)
+{
+  printf("\n");
+}
+
+static void g3plc_boot_progress(void)
+{
+  static char progress[] = "\\|/-";
+  static unsigned int idx;
+
+  printf("\rBoot G3-PLC... [%c]", progress[idx]);
+  fflush(stdout);
+
+  idx = (idx + 1) % sizeof(progress);
+}
+
+static void g3plc_boot_end(void)
+{
+  printf("\rBoot G3-PLC... done!\n");
+}
+
+
 static uint8_t rnd_seqno(void)
 {
   return arc4random_uniform(0xff);
@@ -283,6 +305,9 @@ int main(int argc, char *argv[])
     .htonl                = htonl,
     .ntohl                = ntohl,
     .usleep               = usleep_UL,
+    .g3plc_boot_start     = g3plc_boot_start,
+    .g3plc_boot_progress  = g3plc_boot_progress,
+    .g3plc_boot_end       = g3plc_boot_end,
 
     .lora = (struct lora_opt){
       .seqno   = rnd_seqno(),
