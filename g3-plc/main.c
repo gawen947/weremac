@@ -171,7 +171,7 @@ static void boot_progress(void)
   printf("\rBoot G3-PLC... [%c]", progress[idx]);
   fflush(stdout);
 
-  idx = (idx + 1) % sizeof(progress);
+  idx = (idx + 1) % (sizeof(progress) - 1);
 }
 
 static void boot_end(void)
