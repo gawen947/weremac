@@ -595,7 +595,7 @@ int g3plc_reset(void)
   /* switch to 1M/500k baudrate */
   xwait_for_byte(n, 0xa1);    BPRG(); /* baud rate change request */
   xsend_byte(n, 0xc1);        BPRG(); /* baud rate change command */
-  xsend_byte(n, 0x88);        BPRG(); /* baud rate (boot 461k / appl. 461k) */
+  xsend_byte(n, 0x84);        BPRG(); /* baud rate (boot 461k / appl. 115.2k) */
   xwait_for_byte(n, 0xcf);    BPRG(); /* baud rate change accept */
   xset_uart_speed(n, 460800); BPRG(); /* switch to boot baudrate */
   xsend_byte(n, 0xaa);        BPRG(); /* baud rate change response */
@@ -620,6 +620,10 @@ int g3plc_reset(void)
     else
       return G3PLC_INIT_BOOT_ERROR;
   }
+
+  /* Back to 115.2k, communications with
+     the CPX didn't work too well at 461k. */
+  xset_uart_speed(n, 115200);
 
   if(g3plc_conf.boot_end)
     g3plc_conf.boot_end();
