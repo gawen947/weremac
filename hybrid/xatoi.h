@@ -23,6 +23,7 @@
  */
 
 #ifndef _XATOI_H_
+#define _XATOI_H_
 
 #include <stdint.h>
 #include <limits.h>
