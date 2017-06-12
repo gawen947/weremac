@@ -508,11 +508,12 @@ void g3plc_print_cmd(const struct g3plc_cmd *cmd, unsigned int size)
   field("CMD   ", g3plc_cmdID2str(cmd->idp, cmd->cmd), cmd->cmd);
   print_status(cmd, size);
   print_g3event_indication(cmd, size);
-  putchar('\n');
 
   /* display raw data */
-  printf(" Data (%d bytes):\n", size);
-  hex_dump(cmd->data, size);
+  if(size > 0) {
+    printf(" Data (%d bytes):\n", size);
+    hex_dump(cmd->data, size);
+  }
 
   printf("}\n");
 }
