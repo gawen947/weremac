@@ -511,7 +511,7 @@ void g3plc_print_cmd(const struct g3plc_cmd *cmd, unsigned int size)
   putchar('\n');
 
   /* display raw data */
-  printf(" Data (%d bytes):", size);
+  printf(" Data (%d bytes):\n", size);
   hex_dump(cmd->data, size);
 
   printf("}\n");
