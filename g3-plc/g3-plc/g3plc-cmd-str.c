@@ -22,7 +22,10 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+
 #include "g3plc-cmd.h"
+#include "dump.h"
 
 const char * g3plc_type2str(enum g3plc_type type)
 {
@@ -430,4 +433,86 @@ const char * g3plc_bandplan2str(enum g3plc_bandplan bp)
   default:
     return "unknown band plan";
   }
+}
+
+static void field(const char *name, const char *value_s, unsigned int value)
+{
+  printf(" %s: %s (0x%02x)\n", name, value_s, value);
+}
+
+static void hex_field(const char *name, unsigned int value)
+{
+  printf(" %s: 0x%02x\n", name, value);
+}
+
+static void print_status(const struct g3plc_cmd *cmd, unsigned int size)
+{
+  unsigned int status;
+
+  /* we need at least one status byte */
+  if(size < 1)
+    return;
+  status = cmd->data[0];
+
+  /* we only find status in confirmations */
+  if(cmd->ida == G3PLC_IDA_CONFIRM) {
+    /* for some commands status is in second byte */
+    if((cmd->idp == G3PLC_IDP_UMAC && cmd->cmd == G3PLC_CMD_MCPS_DATA) || \
+       (cmd->idp == G3PLC_IDP_ADP  && cmd->cmd == G3PLC_CMD_ADPM_PATH_DISCOVERY)) {
+      if(size < 2)
+        return;
+      status = cmd->data[1];
+    }
+
+    field("Status", g3plc_status2str(cmd->idp, status), status);
+  }
+}
+
+static void print_g3event_indication(const struct g3plc_cmd *cmd, unsigned int size)
+{
+  unsigned int event_code, length, param, ida, idp, cmd_ID;
+  const unsigned char *d = cmd->data;
+
+  /* only applies for G3-EVENT.indication */
+  if(cmd->idp != G3PLC_IDP_G3CTR || cmd->cmd != G3PLC_CMD_G3_EVENT)
+    return;
+
+  if(size < 5)
+    return;
+
+  event_code = *d; d++;
+  length     = *(uint16_t *)d; d++; /* FIXME: endianness */
+  param      = *(uint16_t *)d; d++; /* FIXME: endianness */
+
+  cmd_ID = param & 0xff;
+  idp    = (param >> 8)  & 0xf; /* was ADP in datasheet, probably a typo */
+  ida    = (param >> 12) & 0xf;
+
+  hex_field("EvCode", event_code);
+  hex_field("Length", length);
+  field("Ev IDA", g3plc_ida2str(ida), ida);
+  field("Ev IDP", g3plc_idp2str(idp), idp);
+  field("Ev CMD", g3plc_cmdID2str(idp, cmd_ID), cmd_ID);
+}
+
+void g3plc_print_cmd(const struct g3plc_cmd *cmd, unsigned int size)
+{
+  size -= sizeof(struct g3plc_cmd);
+
+  printf("command {\n");
+
+  /* common values */
+  field("Type  ", g3plc_type2str(cmd->type), cmd->type);
+  field("IDA   ", g3plc_ida2str(cmd->ida), cmd->ida);
+  field("IDP   ", g3plc_idp2str(cmd->idp), cmd->idp);
+  field("CMD   ", g3plc_cmdID2str(cmd->idp, cmd->cmd), cmd->cmd);
+  print_status(cmd, size);
+  print_g3event_indication(cmd, size);
+  putchar('\n');
+
+  /* display raw data */
+  printf(" Data (%d bytes):", size);
+  hex_dump(cmd->data, size);
+
+  printf("}\n");
 }
