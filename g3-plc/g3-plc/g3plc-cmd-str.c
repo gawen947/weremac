@@ -25,7 +25,7 @@
 #include <stdio.h>
 
 #include "g3plc-cmd.h"
-#include "dump.h"
+#include "../dump.h"
 
 const char * g3plc_type2str(enum g3plc_type type)
 {
