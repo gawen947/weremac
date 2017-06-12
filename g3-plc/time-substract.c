@@ -40,7 +40,7 @@ int timespec_substract(struct timespec *result, struct timespec *x, struct times
     y->tv_nsec -= NSEC * sec;
     y->tv_sec  += sec;
   }
-  if (x->tv_nsec - y->tv_nsec > NSEC) {
+  if (x->tv_nsec - y->tv_nsec > (long)NSEC) {
     int sec = (x->tv_nsec - y->tv_nsec) / NSEC;
     y->tv_nsec += NSEC * sec;
     y->tv_sec  -= sec;
