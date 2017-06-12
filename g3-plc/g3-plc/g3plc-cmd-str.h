@@ -36,4 +36,8 @@ const char * g3plc_attr2str(enum g3plc_attr attr);
 const char * g3plc_macstatus2str(enum g3plc_mac_status st);
 const char * g3plc_bandplan2str(enum g3plc_bandplan bp);
 
+/* Display a command on stdout.
+   Size is the size of the command with its data. */
+void g3plc_print_cmd(const struct g3plc_cmd *cmd, unsigned int size);
+
 #endif /* _G3PLC_CMD_STR_H_ */
