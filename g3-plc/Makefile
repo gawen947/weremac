@@ -10,7 +10,8 @@ OBJ = $(patsubst %.c,%.o,$(SRC))
 TARGETS = g3plc-stdio g3plc-send g3plc-unix
 
 G3PLC_OBJ  = g3-plc/g3plc.o g3-plc/g3plc-cmd.o g3-plc/pack.o \
-						 g3-plc/cmdbuf.o g3-plc/crc32.o g3-plc/g3plc-str.o
+						 g3-plc/cmdbuf.o g3-plc/crc32.o g3-plc/g3plc-str.o \
+						 g3-plc/g3plc-cmd-str.o
 COMMON_OBJ = string-utils.o rpi-gpio.o timer.o uart.o lock.o \
 						 common.o xatoi.o version.o safe-call.o help.o \
 						 dump.o crc-ccitt.o common.o options.o main.c
