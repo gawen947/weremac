@@ -32,7 +32,7 @@
 
 void fill_with_random(unsigned char *buf, unsigned int size)
 {
-  int i;
+  unsigned int i;
 
   struct timeval tv;
   unsigned int seed;
