@@ -1,4 +1,4 @@
-CFLAGS  := -std=c99 -O2 -fPIC -Wall -MMD -pipe
+CFLAGS  := -std=c99 -O2 -fPIC -Wall -Wextra -MMD -pipe
 LDFLAGS := -lpthread -lrt
 
 SRC  = $(wildcard *.c) $(wildcard g3-plc/*.c)
