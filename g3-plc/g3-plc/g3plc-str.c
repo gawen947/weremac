@@ -90,7 +90,6 @@ const char * g3plc_send2str(enum g3plc_send_status status)
     return "out of memory";
   case G3PLC_SND_FAILURE:
     return "failure";
-
   default:
     return "unknown send status";
   }

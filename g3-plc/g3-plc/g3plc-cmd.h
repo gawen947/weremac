@@ -121,8 +121,8 @@ enum g3plc_cmd_ID {
   G3PLC_CMD_EAPM_NETWORK       = 0x04, /* transmission request of kick/GMK-related processing */
   G3PLC_CMD_EAPM_SETCLIENTINFO = 0x05, /* transmission request of operating client information */
   G3PLC_CMD_EAPM_NETWORK_JOIN  = 0x06, /* notify that peer participates in PAN */
-  G3PLC_CMD_EAPM_NETWORK_LEAVE = 0x07, /* notify that peer leave the PAN */
-  G3PLC_CMD_EAPM_NEWDEVICE     = 0x08, /* notify a new dvice trying to join the PAN */
+  G3PLC_CMD_EAPM_NETWORK_LEAVE = 0x07, /* notify that peer leaves the PAN */
+  G3PLC_CMD_EAPM_NEWDEVICE     = 0x08, /* notify that a new device is trying to join the PAN */
 };
 
 /* status code */
@@ -245,7 +245,6 @@ enum g3plc_mac_status {
   R_G3MAC_STATUS_LML_ABORTED            = 0xc0,
   R_G3MAC_STATUS_LML_ABORT_ERROR        = 0xcd,
 };
-
 
 /* Convert a command structure into a literal.
    This is useful for defining common command as literals
