@@ -23,6 +23,7 @@
  */
 
 #ifdef __linux__
+# define _POSIX_C_SOURCE 199506L
 # include <bsd/stdlib.h>
 #endif /* __linux__ */
 
