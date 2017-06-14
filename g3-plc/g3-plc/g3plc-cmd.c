@@ -46,8 +46,8 @@ void ntoh_g3plc_cmd(struct g3plc_cmd *cmd)
   struct g3plc_cmd  copy = {
     .reserved = buf[0],
     .type     = buf[1],
-    .idc      = (buf[2] & 0x80) >> 7,
-    .ida      = (buf[2] & 0x70) >> 4,
+    .idc      = buf[2]  >> 7,
+    .ida      = (buf[2] >> 4) & 7,
     .idp      = buf[2] & 0x0f,
     .cmd      = buf[3]
   };
