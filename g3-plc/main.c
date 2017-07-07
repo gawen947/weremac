@@ -226,6 +226,7 @@ static void print_help(const char *name, const char *mode_name,
     { 'r', "retransmissions", "Maximum number of retransmissions (default 3)" },
     { 'B', "baud",            "Specify the baud rate (default 9600)" },
     { 'd', "destination",     "Destination MAC (hex. short address, default to broadcast)" },
+    { 'F', "flash",           "Flash the CPX3 with the firmware" },
     { 0,   "reset",           "RESET RPi GPIO" },
     { 0, NULL, NULL }
   };
@@ -277,11 +278,10 @@ int main(int argc, char *argv[])
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
   int err;
+  int do_flash = 0;
 
   enum opt {
     OPT_COMMIT = 0x100,
-    OPT_IRQ,
-    OPT_CTS,
     OPT_RESET,
   };
 
@@ -303,9 +303,10 @@ int main(int argc, char *argv[])
     { "baud", required_argument, NULL, 'B' },
     { "destination", required_argument, NULL, 'd' },
 
+    /* modem configuration */
+    { "flash", no_argument, NULL, 'F' },
+
     /* GPIO configuration */
-    { "irq", required_argument, NULL, OPT_IRQ },
-    { "cts", required_argument, NULL, OPT_CTS },
     { "reset", required_argument, NULL, OPT_RESET },
     { NULL, 0, NULL, 0 }
   };
@@ -314,7 +315,7 @@ int main(int argc, char *argv[])
      structure are merged from both
      the common options and the mode
      (stdio, ping, ...) options. */
-  char * optstring_merged    = strcat_dup("hVviat:r:B:d:", iface_mode.optstring);
+  char * optstring_merged    = strcat_dup("hVviat:r:B:d:F", iface_mode.optstring);
   struct option *opts_merged = merge_opts(common_opts, iface_mode.long_opts);
 
   prog_name = basename(argv[0]);
@@ -365,6 +366,9 @@ int main(int argc, char *argv[])
     case 'B':
       speed_str = strdup(optarg);
       speed = baud(optarg);
+      break;
+    case 'F':
+      do_flash = 1;
       break;
     case 'V':
       version(prog_name);
@@ -421,9 +425,11 @@ int main(int argc, char *argv[])
   g3plc_init(&g3plc);
 
   /* Reset the modem. */
-  err = g3plc_reset();
-  if(err < 0)
-    errx(EXIT_FAILURE, "cannot reset G3-PLC: %s", g3plc_init2str(err));
+  if(do_flash) {
+    err = g3plc_reset();
+    if(err < 0)
+      errx(EXIT_FAILURE, "cannot reset G3-PLC: %s", g3plc_init2str(err));
+  }
 
   /* Start the threads that will handle the IO
      with the G3-PLC layer. That is:
