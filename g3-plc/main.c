@@ -41,6 +41,7 @@
 #include "g3-plc/g3plc-str.h"
 #include "g3-plc/g3plc.h"
 #include "string-utils.h"
+#include "safe-call.h"
 #include "rpi-gpio.h"
 #include "version.h"
 #include "options.h"
@@ -134,25 +135,6 @@ static void * input_thread_func(void *p)
   uart_read_loop();
 
   return NULL; /* FIXME: return with error code */
-}
-
-static void start_io_threads(const struct context *ctx,
-                             const struct g3plc_config *g3plc)
-{
-  int err;
-
-  struct io_thread_data data = (struct io_thread_data){
-    .mode   = &iface_mode,
-    .ctx    = ctx,
-    .config = g3plc
-  };
-
-  thread_block_signals();
-
-  err  = pthread_create(&output_thread, NULL, output_thread_func, &data);
-  err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
-  if(err)
-    errx(EXIT_FAILURE, "cannot create threads");
 }
 
 static void usleep_UL(unsigned long duration)
@@ -272,6 +254,11 @@ int main(int argc, char *argv[])
     .timeout        = 1000000,  /* 1 second */
     .flags          = 0,
     .data           = &ctx
+  };
+  struct io_thread_data io_thread_data = (struct io_thread_data){
+    .mode   = &iface_mode,
+    .ctx    = &ctx,
+    .config = &g3plc
   };
   speed_t speed    = B9600;
   int exit_status  = EXIT_FAILURE;
@@ -433,7 +420,8 @@ int main(int argc, char *argv[])
      with the G3-PLC layer. That is:
        - The input thread that read new messages from UART.
        - The output thread that send message according to iface_mode. */
-  start_io_threads(&ctx, &g3plc);
+  thread_block_signals();
+  xpthread_create(&input_thread, NULL, input_thread_func, &io_thread_data);
 
   /* The read loop has just been started in the IO threads.
      We can receive message so we can configure and start the modem. */
@@ -441,8 +429,8 @@ int main(int argc, char *argv[])
   if(err < 0)
     errx(EXIT_FAILURE, "cannot start G3-PLC: %s", g3plc_init2str(err));
 
-  /* It is the mode in the output thread that can quit,
-     so we join on the output thread only. */
+  /* The output thread starts the mode. */
+  xpthread_create(&output_thread, NULL, output_thread_func, &io_thread_data);
   pthread_join(output_thread, NULL);
 
   /* IO threads returned, this is the end.

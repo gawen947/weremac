@@ -32,6 +32,11 @@
 #include "g3plc-cmd.h"
 #include "g3plc.h"
 
+#ifdef DEBUG
+# include <stdio.h>
+# include "g3plc-cmd-str.h"
+#endif
+
 /* Maximum size of write during boot sequence segment upload. */
 #define BOOT_SEGMENT_CHUNK 8092
 
@@ -205,7 +210,7 @@ void g3plc_init(const struct g3plc_config *conf)
     x_(fun, __VA_ARGS__);                        \
     d = wait_for_cmd(confirm);                   \
     if(!d)                                       \
-      return G3PLC_INIT_START_ERROR;             \
+      return G3PLC_INIT_CMD_TIMEOUT;             \
     free_cmd_data();                             \
   } while(0)
 int g3plc_start(void)
@@ -269,6 +274,12 @@ int g3plc_command(struct g3plc_cmd *cmd, unsigned int size)
 {
   if(size < sizeof(struct g3plc_cmd))
     return G3PLC_SND_INVALID_HDR;
+
+#ifdef DEBUG
+  puts(">> SEND:\n");
+  g3plc_print_cmd(cmd, size);
+  putc('\n');
+#endif
 
   hton_g3plc_cmd(cmd);                                        /* network order */
   append_crc(&g3plc_conf, (unsigned char *)cmd, &size);       /* apply CRC */
@@ -479,6 +490,12 @@ PARSING_COMPLETE:
       return status;
   }
 
+#ifdef DEBUG
+  puts("<< RECV:\n");
+  g3plc_print_cmd(cmd, size);
+  putc('\n');
+#endif
+
   CB(raw, cmd, size, status, g3plc_conf.data);
 
   if(status == G3PLC_RCV_SUCCESS)
@@ -594,6 +611,7 @@ static int send_segment(unsigned int segno)
 } while(0)
 int g3plc_reset(void)
 {
+  const unsigned char *d;
   int n;
 
   if(g3plc_conf.boot_start)
@@ -644,6 +662,10 @@ int g3plc_reset(void)
   /* Back to 115.2k, communications with
      the CPX didn't work too well at 461k. */
   xset_uart_speed(115200);
+
+  d = wait_for_cmd(SYSTEM_CTRL_READY);
+  if(!d)
+    return G3PLC_INIT_BOOT_TIMEOUT;
 
   if(g3plc_conf.boot_end)
     g3plc_conf.boot_end();

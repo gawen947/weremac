@@ -46,6 +46,12 @@ const char * g3plc_init2str(enum g3plc_init_status status)
     return "success";
   case G3PLC_INIT_BOOT_ERROR:
     return "boot error";
+  case G3PLC_INIT_BOOT_TIMEOUT:
+    return "boot timeout";
+  case G3PLC_INIT_START_ERROR:
+    return "start sequence error";
+  case G3PLC_INIT_CMD_TIMEOUT:
+    return "request confirmation timeout";
   default:
     return "unknown init status";
   }

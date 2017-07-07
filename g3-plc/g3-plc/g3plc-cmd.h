@@ -300,6 +300,12 @@ enum g3plc_mac_status {
                                                     G3PLC_IDA_INDICATION, \
                                                     G3PLC_IDP_UMAC,       \
                                                     G3PLC_CMD_MCPS_DATA)
+#define SYSTEM_CTRL_READY INLINE_G3PLC_CMD(0,                      \
+                                           G3PLC_TYPE_SYSTEM,      \
+                                           G3PLC_CHAN0,            \
+                                           G3PLC_IDA_REQUEST,      \
+                                           G3PLC_IDP_G3CTR,        \
+                                           G3PLC_CMD_G3_SETCONFIG)
 
 /* G3 PLC command packets are represented with a bitfield structure.
    However the fields order is not defined in standard C, only its size.

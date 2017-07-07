@@ -36,7 +36,7 @@
 #include "cmdbuf.h"
 
 #define G3PLC_MAJOR 2
-#define G3PLC_MINOR 3
+#define G3PLC_MINOR 4
 
 #define G3PLC_DATA_HDR_SIZE 28 /* see G3-PLC Serial Command Spec. p51 */
 #define G3PLC_MAX_PAYLOAD   G3PLC_MAX_CMD - G3PLC_DATA_HDR_SIZE - sizeof(struct g3plc_cmd)
@@ -49,8 +49,10 @@ enum g3plc_flags {
 /* Initialization status */
 enum g3plc_init_status {
   G3PLC_INIT_SUCCESS,
-  G3PLC_INIT_BOOT_ERROR,   /* error during boot sequence (CPX3 flash) */
-  G3PLC_INIT_START_ERROR, /* error during start sequence (CPX3 configuration) */
+  G3PLC_INIT_BOOT_ERROR,    /* error during boot sequence (CPX3 flash) */
+  G3PLC_INIT_BOOT_TIMEOUT,  /* timeout waiting for boot confirmation */
+  G3PLC_INIT_START_ERROR,   /* error during start sequence (CPX3 configuration) */
+  G3PLC_INIT_CMD_TIMEOUT,   /* timeout waiting for request confirmation */
 };
 
 /* Status of a received frame/command */

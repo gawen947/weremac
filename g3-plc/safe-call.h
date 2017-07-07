@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <utime.h>
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -71,8 +72,7 @@ ssize_t xrecv(int sockfd, void *buf, size_t len, int flags);
 int xbind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int xconnect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 char * xstrdup(const char *s);
-#ifdef USE_THREAD
-int xsem_init(sem_t *sem, int pshared, unsigned int value);
-#endif /* USE_THREAD */
+int xpthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                    void *start_routine, void *arg);
 
 #endif /* _SAFE_CALL_H_ */

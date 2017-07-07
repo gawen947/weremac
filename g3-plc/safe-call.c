@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
@@ -108,3 +109,5 @@ SAFE_CALL3(accept, < 0, "accept error", int, int, struct sockaddr *,
 
 SAFE_CALL4(send, < 0, "send error", ssize_t, int, const void *, size_t, int)
 SAFE_CALL4(recv, < 0, "recv error", ssize_t, int, void *, size_t, int)
+SAFE_CALL4(pthread_create, != 0, "cannot create thread", int,
+           pthread_t *, const pthread_attr_t *, void *, void *)
