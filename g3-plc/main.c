@@ -153,8 +153,6 @@ static void start_io_threads(const struct context *ctx,
   err |= pthread_create(&input_thread, NULL, input_thread_func, &data);
   if(err)
     errx(EXIT_FAILURE, "cannot create threads");
-
-  pthread_join(output_thread, NULL);
 }
 
 static void usleep_UL(unsigned long duration)
