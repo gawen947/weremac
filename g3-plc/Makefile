@@ -34,6 +34,10 @@ else
 	CFLAGS += -DNDEBUG=1
 endif
 
+ifdef VERBOSE_DEBUG
+	CFLAGS += -DVERBOSE_DEBUG=1
+endif
+
 ifdef VERBOSE
 	Q :=
 else

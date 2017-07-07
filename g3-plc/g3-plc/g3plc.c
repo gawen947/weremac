@@ -275,10 +275,10 @@ int g3plc_command(struct g3plc_cmd *cmd, unsigned int size)
   if(size < sizeof(struct g3plc_cmd))
     return G3PLC_SND_INVALID_HDR;
 
-#ifdef DEBUG
-  puts(">> SEND:\n");
+#ifdef VERBOSE_DEBUG
+  puts(">> SEND:");
   g3plc_print_cmd(cmd, size);
-  putc('\n');
+  putchar('\n');
 #endif
 
   hton_g3plc_cmd(cmd);                                        /* network order */
@@ -490,10 +490,10 @@ PARSING_COMPLETE:
       return status;
   }
 
-#ifdef DEBUG
-  puts("<< RECV:\n");
+#ifdef VERBOSE_DEBUG
+  puts("<< RECV:");
   g3plc_print_cmd(cmd, size);
-  putc('\n');
+  putchar('\n');
 #endif
 
   CB(raw, cmd, size, status, g3plc_conf.data);
