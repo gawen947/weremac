@@ -248,7 +248,7 @@ enum g3plc_mac_status {
 
 /* Convert a command structure into a literal.
    This is useful for defining common command as literals
-   that we can use in switch cases such as the dissector. */
+   that we can use as switch cases such as the dissector. */
 #define LITERAL_G3PLC_CMD(cmd)                  \
   (union {                                      \
     uint32_t         u32;                       \

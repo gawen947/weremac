@@ -49,7 +49,8 @@ enum g3plc_flags {
 /* Initialization status */
 enum g3plc_init_status {
   G3PLC_INIT_SUCCESS,
-  G3PLC_INIT_BOOT_ERROR, /* error during boot sequence */
+  G3PLC_INIT_BOOT_ERROR,   /* error during boot sequence (CPX3 flash) */
+  G3PLC_INIT_START_ERROR, /* error during start sequence (CPX3 configuration) */
 };
 
 /* Status of a received frame/command */
@@ -176,9 +177,15 @@ struct g3plc_config {
   void *data; /* context data passed to user callbacks */
 };
 
-/* Initialize the G3PLC driver (see g3plc_config).
-   Return 0 on success, for other errror codes see g3plc_init_status. */
-int g3plc_init(const struct g3plc_config *conf);
+/* Initialize the G3PLC driver (see g3plc_config). */
+void g3plc_init(const struct g3plc_config *conf);
+
+/* Flash the modem with the firmware.
+   Return 0 on success, for other error codes see g3plc_init_status. */
+int g3plc_reset(void);
+
+/* Configure the CPX3 and start the MAC layer. */
+int g3plc_start(void);
 
 /* Send a command to the G3PLC device.
    The command before must be four bytes longer than actually announced
@@ -204,7 +211,19 @@ int g3plc_recv_frame(void);
    can call it again. */
 int g3plc_uart_putc(unsigned char c);
 
-/* Reset the modem. */
-int g3plc_reset(void);
+/* Wait for command to be received by the CPX3.
+   This can be used to wait for confirmations.
+   The message must be specified as a command literal (see g3plc-cmd.h).
+   This function returns the payload of the command that was just received.
+   This payload *MUST* later be freed with free_cmd_data().
+   The wait will timeout if the message as not been received within
+   the G3-PLC command timeout time specified in the driver configuration.
+   If the call resulted in a timeout, this function returns NULL. */
+const unsigned char * wait_for_cmd(uint32_t cmd_literal);
+
+/* Free a command that has just been captured by wait_for_cmd().
+   This can be called even if the command resulted in a timeout
+   in which case this call has no effect. */
+void free_cmd_data(void);
 
 #endif /* _G3PLC_H_ */

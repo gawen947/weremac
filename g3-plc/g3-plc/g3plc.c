@@ -43,8 +43,8 @@
 
 /* Check the return value of the function.
    Exit with its error when it is different than success. */
-#define x_(n, fun, ...) do { \
-    n = fun(__VA_ARGS__);    \
+#define x_(fun, ...) do { \
+    int n = fun(__VA_ARGS__);  \
     if(n)                    \
       return n;              \
   } while(0)
@@ -192,57 +192,75 @@ static int mlme_start_request(uint8_t pan /* PAN ID */ )
   return g3plc_command(cmd, dat - snd_cmdbuf);
 }
 
-int g3plc_init(const struct g3plc_config *conf)
+void g3plc_init(const struct g3plc_config *conf)
 {
-  int n;
+  g3plc_conf = *conf;
+}
+
+/* Execute a request and wait for confirmation.
+   Return from the function that called the macro
+   with an error if a problem occured. */
+#define xconfirm_(fun, confirm, ...) do {  \
+    const unsigned char *d;                      \
+    x_(fun, __VA_ARGS__);                        \
+    d = wait_for_cmd(confirm);                   \
+    if(!d)                                       \
+      return G3PLC_INIT_START_ERROR;             \
+    free_cmd_data();                             \
+  } while(0)
+int g3plc_start(void)
+{
   uint16_t u16;
   uint8_t  u8;
 
-  g3plc_conf = *conf;
-
-  n = g3plc_reset();
-  if(n)
-    return n;
-
   /* init G3-PLC */
-  x_(n, g3_init_request,
-     500 /* neighbour tables */,
-     500 /* device tables */,
-     1   /* pan in scan */ );
+  xconfirm_(g3_init_request,
+            G3PLC_G3_INIT_CONFIRM,
+            500 /* neighbour tables */,
+            500 /* device tables */,
+            1   /* pan in sc an */ );
 
   /* set config */
-  x_(n, g3_setconfig_request,
-     g3plc_conf.bandplan,
-     g3plc_conf.ext_address );
+  xconfirm_(g3_setconfig_request,
+            G3PLC_G3_SETCONFIG_CONFIRM,
+            g3plc_conf.bandplan,
+            g3plc_conf.ext_address );
 
-  x_(n, mlme_reset_request, 1); /* MLME reset */
+  xconfirm_(mlme_reset_request,
+            G3PLC_MLME_RESET_CONFIRM,
+            1); /* MLME reset */
 
   /* configure short address */
   u16 = g3plc_conf.mac_address;
-  x_(n, mlme_set_request,
-     G3PLC_ATTR_SHORTADDR,
-     0 /* attr idx */,
-     (unsigned char *)&u16,
-     sizeof(u16));
+  xconfirm_(mlme_set_request,
+            G3PLC_MLME_SET_CONFIRM,
+            G3PLC_ATTR_SHORTADDR,
+            0 /* attr idx */,
+            (unsigned char *)&u16,
+            sizeof(u16));
 
   /* configure PAN ID */
   u16 = g3plc_conf.pan_id;
-  x_(n, mlme_set_request,
-     G3PLC_ATTR_PANID,
-     0 /* attr idx */,
-     (unsigned char *)&u16,
-     sizeof(u16));
+  xconfirm_(mlme_set_request,
+            G3PLC_MLME_SET_CONFIRM,
+            G3PLC_ATTR_PANID,
+            0 /* attr id x */,
+            (unsigned char *)&u16,
+            sizeof(u16));
 
   /* configure max retrans */
   u8 = g3plc_conf.retrans;
-  x_(n, mlme_set_request,
-     G3PLC_ATTR_RETRANS,
-     0 /* attr idx */,
-     (unsigned char *)&u8,
-     sizeof(u8));
+  xconfirm_(mlme_set_request,
+            G3PLC_MLME_SET_CONFIRM,
+            G3PLC_ATTR_RETRANS,
+            0 /* attr idx */,
+            (unsigned char *)&u8,
+            sizeof(u8));
 
   /* start MLME */
-  x_(n, mlme_start_request, g3plc_conf.pan_id);
+  xconfirm_(mlme_start_request,
+            G3PLC_MLME_START_CONFIRM,
+            g3plc_conf.pan_id);
 
   return G3PLC_INIT_SUCCESS;
 }
@@ -333,7 +351,9 @@ int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size)
   dat += payload_size;
 
   /* send command to device */
-  x_(status, g3plc_command, cmd, dat - snd_cmdbuf);
+  status = g3plc_command(cmd, dat - snd_cmdbuf);
+  if(status)
+    return status;
 
   confirmation = wait_for_cmd(G3PLC_MCPS_DATA_CONFIRM);
   if(!confirmation)
@@ -509,7 +529,7 @@ int g3plc_uart_putc(unsigned char c)
 
 /* Send a single byte through UART.
    We use this during the boot sequence to signal the device. */
-#define xsend_byte(n, c) x_(n, send_byte, c)
+#define xsend_byte(c) x_(send_byte, c)
 static int send_byte(unsigned char c)
 {
   return g3plc_conf.uart_send(&c, 1);
@@ -517,7 +537,7 @@ static int send_byte(unsigned char c)
 
 /* Wait for the reception of a specific character before continuation.
    We use this during the boot sequence to wait for signals from the device. */
-#define xwait_for_byte(n, c) x_(n, wait_for_byte, c)
+#define xwait_for_byte(c) x_(wait_for_byte, c)
 static int wait_for_byte(unsigned char c)
 {
   unsigned char buf;
@@ -532,7 +552,7 @@ static int wait_for_byte(unsigned char c)
 }
 
 /* Send a program segment to the device. */
-#define xsend_segment(n, segno) x_(n, send_segment, segno)
+#define xsend_segment(segno) x_(send_segment, segno)
 static int send_segment(unsigned int segno)
 {
   int n;
@@ -567,10 +587,10 @@ static int send_segment(unsigned int segno)
   return 0;
 }
 
-#define xset_uart_speed(n, speed) do {  \
-  n = g3plc_conf.set_uart_speed(speed); \
-  if(n < 0)                             \
-    return n;                           \
+#define xset_uart_speed(speed) do {         \
+  int n = g3plc_conf.set_uart_speed(speed); \
+  if(n < 0)                                 \
+    return n;                               \
 } while(0)
 int g3plc_reset(void)
 {
@@ -580,7 +600,7 @@ int g3plc_reset(void)
     g3plc_conf.boot_start();
 
   /* speed for segment 0 */
-  xset_uart_speed(n, 115200);
+  xset_uart_speed(115200);
   BPRG();
 
   /* hardware reset */
@@ -589,16 +609,16 @@ int g3plc_reset(void)
   g3plc_conf.reset_set();
   BPRG();
 
-  xwait_for_byte(n, 0x80); BPRG(); /* program transmission request */
-  xsend_segment(n, 0);     BPRG(); /* send segment 0 */
+  xwait_for_byte(0x80); BPRG(); /* program transmission request */
+  xsend_segment(0);     BPRG(); /* send segment 0 */
 
   /* switch to 1M/500k baudrate */
-  xwait_for_byte(n, 0xa1);    BPRG(); /* baud rate change request */
-  xsend_byte(n, 0xc1);        BPRG(); /* baud rate change command */
-  xsend_byte(n, 0x84);        BPRG(); /* baud rate (boot 461k / appl. 115.2k) */
-  xwait_for_byte(n, 0xcf);    BPRG(); /* baud rate change accept */
-  xset_uart_speed(n, 460800); BPRG(); /* switch to boot baudrate */
-  xsend_byte(n, 0xaa);        BPRG(); /* baud rate change response */
+  xwait_for_byte(0xa1);    BPRG(); /* baud rate change request */
+  xsend_byte(0xc1);        BPRG(); /* baud rate change command */
+  xsend_byte(0x84);        BPRG(); /* baud rate (boot 461k / appl. 115.2k) */
+  xwait_for_byte(0xcf);    BPRG(); /* baud rate change accept */
+  xset_uart_speed(460800); BPRG(); /* switch to boot baudrate */
+  xsend_byte(0xaa);        BPRG(); /* baud rate change response */
 
   /* send remaining segments */
   while(1) {
@@ -616,14 +636,14 @@ int g3plc_reset(void)
       break; /* boot completion */
     else if((buf & 0xf0) == 0x80)
       /* program transmission request for segment segno */
-      xsend_segment(n, segno);
+      xsend_segment(segno);
     else
       return G3PLC_INIT_BOOT_ERROR;
   }
 
   /* Back to 115.2k, communications with
      the CPX didn't work too well at 461k. */
-  xset_uart_speed(n, 115200);
+  xset_uart_speed(115200);
 
   if(g3plc_conf.boot_end)
     g3plc_conf.boot_end();

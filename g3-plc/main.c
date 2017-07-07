@@ -53,18 +53,22 @@
 #include "help.h"
 #include "main.h"
 
-/* FIXME: avoid global */
 struct context ctx = {
   .verbose    = 0,
   .dst_mac    = 0xffff,
   .gpio_reset = -1,
 };
 
+/* Data passed to the IO threads. */
 struct io_thread_data {
   const struct iface_mode     *mode;
   const struct context        *ctx;
   const struct g3plc_config *config;
 };
+
+/* IO threads used by the mode (write to modem),
+   and the read loop (read for driver). */
+static pthread_t output_thread, input_thread;
 
 static void configure_gpio(const struct context *ctx)
 {
@@ -135,7 +139,6 @@ static void * input_thread_func(void *p)
 static void start_io_threads(const struct context *ctx,
                              const struct g3plc_config *g3plc)
 {
-  pthread_t output_thread, input_thread;
   int err;
 
   struct io_thread_data data = (struct io_thread_data){
@@ -410,22 +413,33 @@ int main(int argc, char *argv[])
      a timer is triggered. */
   thread_block_signals();
 
-  /* Initialize G3-PLC layer.
+  /* Initialize and configure G3-PLC driver.
      The interface mode still has to configure
      the g3plc configuration structure. That
      is why we initialize the MAC layer after
      the mode. */
-  err = g3plc_init(&g3plc);
-  if(err < 0)
-    errx(EXIT_FAILURE, "cannot initialize G3-PLC: %s",
-                       g3plc_init2str(err));
+  g3plc_init(&g3plc);
 
+  /* Reset the modem. */
+  err = g3plc_reset();
+  if(err < 0)
+    errx(EXIT_FAILURE, "cannot reset G3-PLC: %s", g3plc_init2str(err));
 
   /* Start the threads that will handle the IO
      with the G3-PLC layer. That is:
        - The input thread that read new messages from UART.
        - The output thread that send message according to iface_mode. */
   start_io_threads(&ctx, &g3plc);
+
+  /* The read loop has just been started in the IO threads.
+     We can receive message so we can configure and start the modem. */
+  err = g3plc_start();
+  if(err < 0)
+    errx(EXIT_FAILURE, "cannot start G3-PLC: %s", g3plc_init2str(err));
+
+  /* It is the mode in the output thread that can quit,
+     so we join on the output thread only. */
+  pthread_join(output_thread, NULL);
 
   /* IO threads returned, this is the end.
      We can release everything. */
