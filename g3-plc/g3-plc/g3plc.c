@@ -337,8 +337,8 @@ int g3plc_send(uint16_t dst, const void *payload, unsigned int payload_size)
   dat += sizeof(uint16_t);
 
   /* destination address */
-  memset(dat, 0, 8 - sizeof(uint16_t));     dat += 8 - sizeof(uint16_t);
-  *(uint16_t *)dat = g3plc_conf.htons(dst); dat += sizeof(uint16_t);
+  memset(dat, 0, 8);
+  *(uint16_t *)dat = g3plc_conf.htons(dst); dat += 8;
 
   /* MSDU length */
   *(uint16_t *)dat = g3plc_conf.htons(payload_size);
