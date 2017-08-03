@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     .boot_end       = boot_end,
     .recv_frame     = g3plc_recv_frame,
     .bandplan       = G3PLC_BP_CENELEC_A, /* FIXME: option */
-    .pan_id         = 0xAAAA,             /* FIXME: option */
+    .pan_id         = 0x0001,             /* FIXME: option */
     .ext_address    = 0,                  /* FIXME: option */
     .retrans        = 5,
     .timeout        = 1000000,  /* 1 second */
