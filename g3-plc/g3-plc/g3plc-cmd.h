@@ -223,9 +223,10 @@ enum g3plc_bandplan {
 
 /* IB attributes */
 enum g3plc_attr {
-  G3PLC_ATTR_PANID     = 0x0050, /* PAN ID */
-  G3PLC_ATTR_SHORTADDR = 0x0053, /* short address */
-  G3PLC_ATTR_RETRANS   = 0x0059, /* max retransmissions */
+  G3PLC_ATTR_PANID       = 0x0050, /* PAN ID */
+  G3PLC_ATTR_PROMISCUOUS = 0x0051, /* promiscuous mode */
+  G3PLC_ATTR_SHORTADDR   = 0x0053, /* short address */
+  G3PLC_ATTR_RETRANS     = 0x0059  /* max retransmissions */
 };
 
 /* MAC status code */

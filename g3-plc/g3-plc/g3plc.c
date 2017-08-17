@@ -262,6 +262,17 @@ int g3plc_start(void)
             (unsigned char *)&u8,
             sizeof(u8));
 
+  /* configure promiscuous mode */
+  if(g3plc_conf.flags & G3PLC_INVALID) {
+    u8 = 1; /* true */
+    xconfirm_(mlme_set_request,
+              G3PLC_MLME_SET_CONFIRM,
+              G3PLC_ATTR_PROMISCUOUS,
+              0 /* attr idx */,
+              (unsigned char *)&u8,
+              sizeof(u8));
+  }
+
   /* start MLME */
   xconfirm_(mlme_start_request,
             G3PLC_MLME_START_CONFIRM,
